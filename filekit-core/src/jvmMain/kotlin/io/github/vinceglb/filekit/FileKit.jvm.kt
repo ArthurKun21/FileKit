@@ -155,6 +155,20 @@ public val FileKit.pictureDir: PlatformFile
         Platform.Windows -> getEnv("USERPROFILE").toPath() / "Pictures"
     }.also(Path::assertExists).let(::PlatformFile)
 
+/**
+ * Returns the videos directory for the current user.
+ */
+@Suppress("UnusedReceiverParameter")
+public val FileKit.videoDir: PlatformFile
+    get() = when (PlatformUtil.current) {
+        Platform.Linux -> System.getenv("XDG_VIDEOS_DIR")?.toPath()
+            ?: (getEnv("HOME").toPath() / "Videos")
+
+        Platform.MacOS -> getEnv("HOME").toPath() / "Movies"
+
+        Platform.Windows -> getEnv("USERPROFILE").toPath() / "Videos"
+    }.also(Path::assertExists).let(::PlatformFile)
+
 private fun getEnv(key: String): String = System.getenv(key)
     ?: throw IllegalStateException("Environment variable $key not found.")
 
@@ -231,4 +245,11 @@ public actual suspend fun FileKit.saveImageToGallery(
     filename: String,
 ) {
     FileKit.pictureDir / filename write bytes
+}
+
+public actual suspend fun FileKit.saveVideoToGallery(
+    file: PlatformFile,
+    filename: String,
+) {
+    FileKit.videoDir / filename write file
 }

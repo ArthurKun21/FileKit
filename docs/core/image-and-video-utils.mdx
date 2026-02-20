@@ -1,6 +1,6 @@
 ---
-title: 'Image utilities'
-description: 'Utilities for working with images in Kotlin Multiplatform'
+title: 'Image and Video utilities'
+description: 'Utilities for working with image & Video in Kotlin Multiplatform'
 ---
 
 <Check>Supported on Android, iOS, macOS, JVM targets</Check>
@@ -59,6 +59,29 @@ The behavior of `saveImageToGallery` varies slightly by platform:
 | Android | Saves to the device's Pictures directory and makes it visible in the gallery app |
 | iOS | Saves to the device's Camera Roll |
 | macOS/JVM | Saves to the user's Pictures directory |
+| JS/WASM | Not supported (no-op) |
+
+## Saving Videos to Gallery
+
+FileKit provides a way to save videos to the device's gallery:
+
+```kotlin
+suspend fun saveVideoToDeviceGallery() {
+    // Read a video file
+    val videoFile = PlatformFile(FileKit.filesDir, "movie.mp4")
+
+    // Save to the device's video gallery
+    FileKit.saveVideoToGallery(file = videoFile)
+}
+```
+
+The behavior of `saveVideoToGallery` varies slightly by platform:
+
+| Platform | Behavior |
+|----------|----------|
+| Android | Saves to the device's Videos directory and makes it visible in the gallery app |
+| iOS | Saves to the device's Camera Roll |
+| macOS/JVM | Saves to the user's videos directory |
 | JS/WASM | Not supported (no-op) |
 
 ## Encoding and Converting Images

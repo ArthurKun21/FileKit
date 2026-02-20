@@ -61,6 +61,17 @@ public suspend fun FileKit.saveImageToGallery(
 )
 
 /**
+ * Saves a video to the platform's gallery or video album.
+ *
+ * @param file The [PlatformFile] containing the video.
+ * @param filename The name of the file to save.
+ */
+public expect suspend fun FileKit.saveVideoToGallery(
+    file: PlatformFile,
+    filename: String = file.name,
+)
+
+/**
  * Compresses an image.
  *
  * @param bytes The image data to compress.

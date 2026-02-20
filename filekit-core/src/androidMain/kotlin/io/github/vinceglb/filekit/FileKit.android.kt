@@ -16,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
+import java.io.OutputStream
 import java.lang.ref.WeakReference
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -157,3 +159,43 @@ private fun correctBitmapOrientation(imageData: ByteArray, bitmap: Bitmap): Bitm
         .createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
         .also { tempFile.delete() }
 }
+
+public actual suspend fun FileKit.saveVideoToGallery(
+    file: PlatformFile,
+    filename: String,
+): Unit = withContext(Dispatchers.IO) {
+    val input = openInputStream(file) ?: return@withContext
+    writeVideoToGallery(filename = filename) { output ->
+        input.use { it.copyTo(output) }
+    }
+}
+
+private fun FileKit.writeVideoToGallery(
+    filename: String,
+    writer: (OutputStream) -> Unit,
+) {
+    val resolver = context.contentResolver
+    val videoDetails = ContentValues().apply {
+        put(MediaStore.Video.Media.DISPLAY_NAME, filename)
+    }
+    val videoCollection = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        }
+
+        else -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+    }
+    val videoUri = resolver.insert(videoCollection, videoDetails) ?: return
+
+    try {
+        resolver.openOutputStream(videoUri)?.use(writer) ?: resolver.delete(videoUri, null, null)
+    } finally {
+        resolver.delete(videoUri, null, null)
+    }
+}
+
+private fun FileKit.openInputStream(file: PlatformFile): InputStream? =
+    when (val source = file.androidFile) {
+        is AndroidFile.FileWrapper -> source.file.inputStream()
+        is AndroidFile.UriWrapper -> context.contentResolver.openInputStream(source.uri)
+    }

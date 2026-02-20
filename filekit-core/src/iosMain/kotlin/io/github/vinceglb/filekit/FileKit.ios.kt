@@ -9,6 +9,7 @@ import kotlinx.cinterop.useContents
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import platform.CoreGraphics.CGRectMake
 import platform.CoreGraphics.CGSizeMake
@@ -19,6 +20,8 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
+import platform.Photos.PHAssetChangeRequest
+import platform.Photos.PHPhotoLibrary
 import platform.UIKit.UIGraphicsBeginImageContextWithOptions
 import platform.UIKit.UIGraphicsEndImageContext
 import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
@@ -26,6 +29,8 @@ import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import platform.UIKit.UIImagePNGRepresentation
 import platform.UIKit.UIImageWriteToSavedPhotosAlbum
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 public actual val FileKit.filesDir: PlatformFile
     get() = NSFileManager
@@ -94,4 +99,28 @@ private fun UIImage.scaleToSize(newWidth: Int, newHeight: Int): UIImage? {
     val resizedImage = UIGraphicsGetImageFromCurrentImageContext()
     UIGraphicsEndImageContext()
     return resizedImage
+}
+
+public actual suspend fun FileKit.saveVideoToGallery(
+    file: PlatformFile,
+    filename: String,
+): Unit = withContext(Dispatchers.IO) {
+    val fileUrl = NSURL.fileURLWithPath(file.path)
+    saveVideoToGallery(fileUrl = fileUrl)
+}
+
+private suspend fun saveVideoToGallery(fileUrl: NSURL): Unit = suspendCancellableCoroutine { continuation ->
+    PHPhotoLibrary.sharedPhotoLibrary().performChanges(
+        changeBlock = {
+            PHAssetChangeRequest.creationRequestForAssetFromVideoAtFileURL(fileUrl)
+        },
+        completionHandler = { success, error ->
+            if (success) {
+                continuation.resume(Unit)
+            } else {
+                val message = error?.localizedDescription ?: "Failed to save video to gallery"
+                continuation.resumeWithException(IllegalStateException(message))
+            }
+        },
+    )
 }
