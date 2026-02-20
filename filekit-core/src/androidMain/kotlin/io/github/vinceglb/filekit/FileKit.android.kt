@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.os.Build
 import android.provider.MediaStore
+import android.webkit.MimeTypeMap
 import androidx.annotation.IntRange
 import androidx.exifinterface.media.ExifInterface
 import io.github.vinceglb.filekit.exceptions.FileKitCoreNotInitializedException
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.lang.ref.WeakReference
@@ -165,18 +167,24 @@ public actual suspend fun FileKit.saveVideoToGallery(
     filename: String,
 ): Unit = withContext(Dispatchers.IO) {
     val input = openInputStream(file) ?: return@withContext
-    writeVideoToGallery(filename = filename) { output ->
+    val mimeType = resolveVideoMimeType(file = file, filename = filename)
+    writeVideoToGallery(filename = filename, mimeType = mimeType) { output ->
         input.use { it.copyTo(output) }
     }
 }
 
 private fun FileKit.writeVideoToGallery(
     filename: String,
+    mimeType: String,
     writer: (OutputStream) -> Unit,
 ) {
     val resolver = context.contentResolver
     val videoDetails = ContentValues().apply {
         put(MediaStore.Video.Media.DISPLAY_NAME, filename)
+        put(MediaStore.Video.Media.MIME_TYPE, mimeType)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.Video.Media.IS_PENDING, 1)
+        }
     }
     val videoCollection = when {
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
@@ -188,11 +196,43 @@ private fun FileKit.writeVideoToGallery(
     val videoUri = resolver.insert(videoCollection, videoDetails) ?: return
 
     try {
-        resolver.openOutputStream(videoUri)?.use(writer) ?: resolver.delete(videoUri, null, null)
-    } finally {
+        resolver.openOutputStream(videoUri)?.use(writer)
+            ?: throw IOException("Could not open output stream for URI: $videoUri")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val completed = ContentValues().apply {
+                put(MediaStore.Video.Media.IS_PENDING, 0)
+            }
+            resolver.update(videoUri, completed, null, null)
+        }
+    } catch (error: Exception) {
         resolver.delete(videoUri, null, null)
+        throw error
     }
 }
+
+private fun resolveVideoMimeType(file: PlatformFile, filename: String): String {
+    file.mimeType()
+        ?.toString()
+        ?.normalizeMime()
+        ?.takeIf(::isVideoMime)
+        ?.let { return it }
+
+    val extension = filename.substringAfterLast('.', "")
+        .lowercase()
+        .takeIf { it.isNotBlank() }
+        ?: return "video/mp4"
+
+    return MimeTypeMap.getSingleton()
+        .getMimeTypeFromExtension(extension)
+        ?.normalizeMime()
+        ?.takeIf(::isVideoMime)
+        ?: "video/mp4"
+}
+
+private fun String.normalizeMime() = substringBefore(';').trim().lowercase()
+
+private fun isVideoMime(mime: String) = mime.startsWith("video/")
 
 private fun FileKit.openInputStream(file: PlatformFile): InputStream? =
     when (val source = file.androidFile) {

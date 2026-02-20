@@ -4,14 +4,20 @@ import androidx.compose.runtime.Composable
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.shareFile
+import io.github.vinceglb.filekit.sample.shared.ui.icons.Film
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Images
 import io.github.vinceglb.filekit.sample.shared.ui.icons.LucideIcons
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Share
 import io.github.vinceglb.filekit.sample.shared.util.isImageFile
+import io.github.vinceglb.filekit.sample.shared.util.isVideoFile
 import io.github.vinceglb.filekit.saveImageToGallery
+import io.github.vinceglb.filekit.saveVideoToGallery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 @Composable
 internal actual fun FileDetailsMobileActions(
     file: PlatformFile,
@@ -36,6 +42,19 @@ internal actual fun FileDetailsMobileActions(
             onClick = {
                 scope.launch {
                     FileKit.saveImageToGallery(file = file)
+                }
+            },
+        )
+    }
+
+    // Save Video to Gallery
+    if (file.isVideoFile()) {
+        FileDetailsActionRow(
+            text = "Save Video to Gallery",
+            icon = LucideIcons.Film,
+            onClick = {
+                scope.launch {
+                    FileKit.saveVideoToGallery(file = file, "${Uuid.random().toHexString()}")
                 }
             },
         )
