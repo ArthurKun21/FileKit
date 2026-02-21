@@ -16,6 +16,7 @@ import androidx.exifinterface.media.ExifInterface
 import io.github.vinceglb.filekit.exceptions.FileKitCoreNotInitializedException
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.calculateNewDimensions
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.Buffer
@@ -118,6 +119,9 @@ private suspend fun FileKit.writeMediaToGallery(
         onWritten(mediaUri)
     } catch (error: Exception) {
         resolver.delete(mediaUri, null, null)
+        if (error is CancellationException) {
+            throw error
+        }
         if (error is FileKitException) {
             throw error
         }
