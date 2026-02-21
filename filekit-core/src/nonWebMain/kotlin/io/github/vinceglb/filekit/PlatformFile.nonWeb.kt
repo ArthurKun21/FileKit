@@ -1,8 +1,10 @@
 package io.github.vinceglb.filekit
 
+import io.github.vinceglb.filekit.exceptions.FileKitException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
+import kotlinx.io.Buffer
 import kotlinx.io.RawSink
 import kotlinx.io.RawSource
 import kotlinx.io.buffered
@@ -167,12 +169,27 @@ public suspend infix fun PlatformFile.write(bytes: ByteArray): Unit =
  */
 public suspend infix fun PlatformFile.write(platformFile: PlatformFile): Unit =
     withContext(Dispatchers.IO) {
+        if (platformFile.isDirectory()) {
+            throw FileKitException("Cannot write a directory to a file destination.")
+        }
+        if (this@write.isSameLogicalFileAs(platformFile)) {
+            throw FileKitException("Source and destination refer to the same file.")
+        }
+
         platformFile.source().use { source ->
-            val size = platformFile.size()
             this@write
                 .sink()
-                .buffered()
-                .use { it.write(source, size) }
+                .use { sink ->
+                    val buffer = Buffer()
+                    while (true) {
+                        val bytesRead = source.readAtMostTo(buffer, COPY_BUFFER_SIZE_BYTES)
+                        if (bytesRead == -1L) {
+                            break
+                        }
+                        sink.write(buffer, bytesRead)
+                    }
+                    sink.flush()
+                }
         }
     }
 
@@ -196,8 +213,23 @@ public suspend fun PlatformFile.writeString(string: String): Unit =
  */
 public suspend infix fun PlatformFile.copyTo(destination: PlatformFile) {
     val resolvedDestination = destination.prepareDestinationForWrite(source = this)
+    if (resolvedDestination.isSameLogicalFileAs(this)) {
+        throw FileKitException("Source and destination refer to the same file.")
+    }
     resolvedDestination write this
 }
+
+private fun PlatformFile.isSameLogicalFileAs(other: PlatformFile): Boolean {
+    val thisAbsolute = absolutePath()
+    val otherAbsolute = other.absolutePath()
+    return if (thisAbsolute.isNotBlank() && otherAbsolute.isNotBlank()) {
+        thisAbsolute == otherAbsolute
+    } else {
+        path == other.path
+    }
+}
+
+private const val COPY_BUFFER_SIZE_BYTES: Long = 8_192L
 
 internal expect suspend fun PlatformFile.prepareDestinationForWrite(source: PlatformFile): PlatformFile
 

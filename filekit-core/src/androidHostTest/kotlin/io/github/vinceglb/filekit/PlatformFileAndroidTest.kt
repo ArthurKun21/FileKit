@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:function-naming", "TestFunctionName")
+
 package io.github.vinceglb.filekit
 
 import android.content.ContentProvider
@@ -6,7 +8,10 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
 import android.database.Cursor
+import android.database.MatrixCursor
 import android.net.Uri
+import android.os.ParcelFileDescriptor
+import android.provider.OpenableColumns
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.exceptions.FileKitUriPathNotSupportedException
 import io.github.vinceglb.filekit.mimeType.MimeType
@@ -15,8 +20,13 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileNotFoundException
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -129,6 +139,52 @@ class PlatformFileAndroidTest {
             }
         }
     }
+
+    @Test
+    fun PlatformFile_size_uriWithoutSizeColumn_returnsMinusOne() {
+        runBlocking {
+            val sourceBytes = "filekit-copy-source".encodeToByteArray()
+            val sourceUri = Uri.parse("content://filekit.test/source.bin")
+            val destinationUri = Uri.parse("content://filekit.test/destination.bin")
+            val provider = MissingSizeContentProvider(
+                sourceUri = sourceUri,
+                destinationUri = destinationUri,
+                sourceBytes = sourceBytes,
+            )
+            initializeFileKitWithResolver(ContentResolver.wrap(provider))
+
+            val source = PlatformFile(sourceUri)
+            assertEquals(expected = -1L, actual = source.size())
+        }
+    }
+
+    @Test
+    fun PlatformFile_copyTo_uriWithoutSizeColumn_copiesContent() {
+        runBlocking {
+            val sourceBytes = "filekit-copy-source".encodeToByteArray()
+            val sourceUri = Uri.parse("content://filekit.test/source.bin")
+            val destinationUri = Uri.parse("content://filekit.test/destination.bin")
+            val provider = MissingSizeContentProvider(
+                sourceUri = sourceUri,
+                destinationUri = destinationUri,
+                sourceBytes = sourceBytes,
+            )
+            val resolver = ContentResolver.wrap(provider)
+            initializeFileKitWithResolver(resolver)
+
+            shadowOf(resolver).registerInputStream(sourceUri, ByteArrayInputStream(sourceBytes))
+
+            val source = PlatformFile(sourceUri)
+            val destinationFile = File.createTempFile("filekit-copy-destination-", ".bin")
+            val destination = PlatformFile(destinationFile)
+            try {
+                source.copyTo(destination)
+                assertContentEquals(expected = sourceBytes, actual = destination.readBytes())
+            } finally {
+                destination.delete(mustExist = false)
+            }
+        }
+    }
 }
 
 private class NullInsertContentProvider : ContentProvider() {
@@ -154,4 +210,93 @@ private class NullInsertContentProvider : ContentProvider() {
         selection: String?,
         selectionArgs: Array<out String>?,
     ): Int = 0
+}
+
+private class MissingSizeContentProvider(
+    private val sourceUri: Uri,
+    private val destinationUri: Uri,
+    private val sourceBytes: ByteArray,
+) : ContentProvider() {
+    private val filesByUri = mutableMapOf<String, File>()
+
+    override fun onCreate(): Boolean = true
+
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?,
+    ): Cursor {
+        val cursor = MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME))
+        cursor.addRow(arrayOf(fileFor(uri).name))
+        return cursor
+    }
+
+    override fun getType(uri: Uri): String? = null
+
+    override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = 0
+
+    @Throws(FileNotFoundException::class)
+    override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
+        val file = fileFor(uri)
+        return ParcelFileDescriptor.open(file, mode.toParcelFlags())
+    }
+
+    private fun fileFor(uri: Uri): File = synchronized(filesByUri) {
+        filesByUri.getOrPut(uri.toString()) {
+            val prefix = (uri.lastPathSegment ?: "file")
+                .replace(Regex("[^a-zA-Z0-9._-]"), "_")
+                .let { if (it.length >= 3) it else it.padEnd(3, '_') }
+            val tempFile = File.createTempFile("provider-$prefix-", ".bin")
+            when (uri.toString()) {
+                sourceUri.toString() -> tempFile.writeBytes(sourceBytes)
+                destinationUri.toString() -> tempFile.writeBytes(byteArrayOf())
+                else -> tempFile.writeBytes(byteArrayOf())
+            }
+            tempFile.deleteOnExit()
+            tempFile
+        }
+    }
+
+    private fun String.toParcelFlags(): Int = when (this) {
+        "r" -> {
+            ParcelFileDescriptor.MODE_READ_ONLY
+        }
+
+        "w", "wt" -> {
+            ParcelFileDescriptor.MODE_WRITE_ONLY or
+                ParcelFileDescriptor.MODE_CREATE or
+                ParcelFileDescriptor.MODE_TRUNCATE
+        }
+
+        "wa" -> {
+            ParcelFileDescriptor.MODE_WRITE_ONLY or
+                ParcelFileDescriptor.MODE_CREATE or
+                ParcelFileDescriptor.MODE_APPEND
+        }
+
+        "rw" -> {
+            ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_CREATE
+        }
+
+        "rwt" -> {
+            ParcelFileDescriptor.MODE_READ_WRITE or
+                ParcelFileDescriptor.MODE_CREATE or
+                ParcelFileDescriptor.MODE_TRUNCATE
+        }
+
+        else -> {
+            throw FileNotFoundException("Unsupported mode: $this")
+        }
+    }
 }
