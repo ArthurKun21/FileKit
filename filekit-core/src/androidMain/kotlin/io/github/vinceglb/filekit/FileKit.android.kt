@@ -1,5 +1,6 @@
 package io.github.vinceglb.filekit
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -147,6 +148,7 @@ public actual suspend fun FileKit.compressImage(
     )
 
     // Step 4: Resize the Bitmap
+    @SuppressLint("UseKtx")
     val resizedBitmap = Bitmap.createScaledBitmap(correctedBitmap, newWidth, newHeight, true)
 
     // Step 5: Create a ByteArrayOutputStream to hold the compressed data
