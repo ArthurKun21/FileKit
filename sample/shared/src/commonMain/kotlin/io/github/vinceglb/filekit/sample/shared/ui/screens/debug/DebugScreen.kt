@@ -49,12 +49,16 @@ private fun DebugScreen(
     var buttonState by remember { mutableStateOf(AppScreenHeaderButtonState.Enabled) }
     var files by remember { mutableStateOf(emptyList<PlatformFile>()) }
 
+    val scope = rememberCoroutineScope()
     val picker = rememberFilePickerLauncher { file ->
         buttonState = AppScreenHeaderButtonState.Enabled
         files = file?.let(::listOf) ?: emptyList()
+
+        scope.launch {
+            file?.let { debugPlatformTest(it) }
+        }
     }
 
-    val scope = rememberCoroutineScope()
     val folderPicker = rememberDirectoryPickerLauncher(directory = null) { folder ->
         scope.launch {
             folder?.let {
@@ -87,8 +91,7 @@ private fun DebugScreen(
                     primaryButtonState = buttonState,
                     onPrimaryButtonClick = {
                         buttonState = AppScreenHeaderButtonState.Loading
-                        // picker.launch()
-                        folderPicker.launch()
+                        picker.launch()
                     },
                     modifier = Modifier.sizeIn(maxWidth = AppMaxWidth),
                 )
@@ -107,7 +110,7 @@ private fun DebugScreen(
     }
 }
 
-internal expect suspend fun debugPlatformTest(folder: PlatformFile)
+internal expect suspend fun debugPlatformTest(file: PlatformFile)
 
 @Preview
 @Composable
