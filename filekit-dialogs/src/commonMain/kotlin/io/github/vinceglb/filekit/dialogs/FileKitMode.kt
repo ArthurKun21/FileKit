@@ -46,7 +46,9 @@ public sealed class FileKitMode<PickerResult, ConsumedResult> {
     /**
      * Multiple file picker mode.
      *
-     * @property maxItems The maximum number of items to pick. Supported only on Android (Photo Picker).
+     * @property maxItems The maximum number of items to pick (1..50).
+     * Native UI limits are platform-dependent (available on Android/iOS gallery pickers),
+     * and FileKit always caps returned results to this value as a fallback.
      */
     public data class Multiple(
         val maxItems: Int? = null,
@@ -55,7 +57,9 @@ public sealed class FileKitMode<PickerResult, ConsumedResult> {
 
         override suspend fun parseResult(flow: Flow<FileKitPickerState<List<PlatformFile>>>): List<PlatformFile>? = flow.last().let {
             when (it) {
-                is FileKitPickerState.Completed -> it.result
+                is FileKitPickerState.Completed -> maxItems
+                    ?.let { max -> it.result.take(max) }
+                    ?: it.result
                 else -> null
             }
         }
@@ -119,7 +123,9 @@ public sealed class FileKitMode<PickerResult, ConsumedResult> {
     /**
      * Multiple file picker mode exposing the state as a [Flow].
      *
-     * @property maxItems The maximum number of items to pick. Supported only on Android (Photo Picker).
+     * @property maxItems The maximum number of items to pick (1..50).
+     * Native UI limits are platform-dependent (available on Android/iOS gallery pickers),
+     * and FileKit always caps emitted totals and lists to this value as a fallback.
      */
     public data class MultipleWithState(
         val maxItems: Int? = null,
@@ -136,15 +142,22 @@ public sealed class FileKitMode<PickerResult, ConsumedResult> {
                     }
 
                     is FileKitPickerState.Started -> {
-                        FileKitPickerState.Started(total = it.total)
+                        FileKitPickerState.Started(
+                            total = maxItems?.let { max -> minOf(it.total, max) } ?: it.total,
+                        )
                     }
 
                     is FileKitPickerState.Progress -> {
-                        FileKitPickerState.Progress(processed = it.processed, total = it.total)
+                        FileKitPickerState.Progress(
+                            processed = maxItems?.let { max -> it.processed.take(max) } ?: it.processed,
+                            total = maxItems?.let { max -> minOf(it.total, max) } ?: it.total,
+                        )
                     }
 
                     is FileKitPickerState.Completed -> {
-                        FileKitPickerState.Completed(result = it.result)
+                        FileKitPickerState.Completed(
+                            result = maxItems?.let { max -> it.result.take(max) } ?: it.result,
+                        )
                     }
                 }
             }

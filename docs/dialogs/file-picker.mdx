@@ -112,7 +112,11 @@ val stateLauncher = rememberFilePickerLauncher(
 </CodeGroup>
 
 <Info>
-The `Multiple` and `MultipleWithState` modes support a `maxItems` parameter to limit the number of files a user can select (1-50 files). If not specified, there's no limit.
+The `Multiple` and `MultipleWithState` modes support a `maxItems` parameter (1-50 files). If not specified, there's no limit.
+
+FileKit treats `maxItems` as an output contract across platforms:
+- **UI-enforced limit**: on pickers that natively support max selection (for example gallery pickers on Android and iOS).
+- **Output-enforced limit**: when native picker APIs do not support max selection (for example generic file/document pickers), FileKit truncates the result to the first `maxItems` files in platform-returned order.
 </Info>
 
 ## Filter by type
