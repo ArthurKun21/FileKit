@@ -105,8 +105,9 @@ public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
 ): Unit = withContext(Dispatchers.IO) {
-    val fileUrl = NSURL.fileURLWithPath(file.path)
-    saveVideoToGallery(fileUrl = fileUrl)
+    file.withScopedAccess {
+        saveVideoToGallery(fileUrl = file.nsUrl)
+    }
 }
 
 private suspend fun saveVideoToGallery(fileUrl: NSURL): Unit = suspendCancellableCoroutine { continuation ->
@@ -114,12 +115,16 @@ private suspend fun saveVideoToGallery(fileUrl: NSURL): Unit = suspendCancellabl
         changeBlock = {
             PHAssetChangeRequest.creationRequestForAssetFromVideoAtFileURL(fileUrl)
         },
-        completionHandler = { success, error ->
+        completionHandler = completion@{ success, error ->
+            if (!continuation.isActive) {
+                return@completion
+            }
+
             if (success) {
                 continuation.resume(Unit)
             } else {
                 val message = error?.localizedDescription ?: "Failed to save video to gallery"
-                continuation.resumeWithException(IllegalStateException(message))
+                continuation.resumeWithException(FileKitException(message))
             }
         },
     )
