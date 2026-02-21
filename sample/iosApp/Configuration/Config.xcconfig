@@ -1,6 +1,6 @@
 TEAM_ID=
 
-PRODUCT_NAME=Sample
+PRODUCT_NAME=FileKit
 PRODUCT_BUNDLE_IDENTIFIER=io.github.vinceglb.filekit.sample.Sample$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=1
