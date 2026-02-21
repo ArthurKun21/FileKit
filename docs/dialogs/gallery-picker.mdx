@@ -45,3 +45,7 @@ On both Android and iOS, you can set a limit on the number of items a user can s
 ```kotlin
 val mode = FileKitMode.Multiple(maxItems = 5)
 ```
+
+This limit is natively enforced by the gallery picker UI on both platforms.
+
+For generic file/document pickers, platform APIs generally only support single/multiple selection (without a native max count). In those cases, FileKit still enforces `maxItems` by truncating returned results.
