@@ -84,9 +84,13 @@ public expect fun PlatformFile.stopAccessingSecurityScopedResource()
  * @param block The code to execute with file access.
  * @return The result of the [block].
  */
-public inline fun <T> PlatformFile.withScopedAccess(block: (PlatformFile) -> T): T = try {
-    startAccessingSecurityScopedResource()
-    block(this)
-} finally {
-    stopAccessingSecurityScopedResource()
+public inline fun <T> PlatformFile.withScopedAccess(block: (PlatformFile) -> T): T {
+    val accessGranted = startAccessingSecurityScopedResource()
+    try {
+        return block(this)
+    } finally {
+        if (accessGranted) {
+            stopAccessingSecurityScopedResource()
+        }
+    }
 }
