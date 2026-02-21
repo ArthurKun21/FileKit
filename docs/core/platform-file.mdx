@@ -83,6 +83,7 @@ val path: String = file.path // "/path/to/document.pdf"
 
 // Get the file size in bytes
 val size: Long = file.size()
+// Note: some provider-backed files may return -1 when size metadata is unavailable.
 
 // Get the parent directory
 val parent: PlatformFile? = file.parent()

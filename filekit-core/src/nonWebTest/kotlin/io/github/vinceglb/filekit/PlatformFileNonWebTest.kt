@@ -1,10 +1,14 @@
+@file:Suppress("ktlint:standard:function-naming", "TestFunctionName")
+
 package io.github.vinceglb.filekit
 
+import io.github.vinceglb.filekit.exceptions.FileKitException
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -126,6 +130,51 @@ class PlatformFileNonWebTest {
         // Delete
         newFile.delete()
         assertFalse { newFile.exists() }
+    }
+
+    @Suppress("ktlint:standard:function-naming")
+    @Test
+    fun PlatformFile_writePlatformFile_copiesContent() = runTest {
+        val destination = resourceDirectory / "copied-hello.txt"
+
+        try {
+            destination write textFile
+
+            assertTrue(destination.exists())
+            assertContentEquals(textFile.readBytes(), destination.readBytes())
+        } finally {
+            if (destination.exists()) {
+                destination.delete(mustExist = false)
+            }
+        }
+    }
+
+    @Test
+    fun PlatformFile_copyTo_sameFile_throws() = runTest {
+        assertFailsWith<FileKitException> {
+            textFile.copyTo(textFile)
+        }
+    }
+
+    @Test
+    fun PlatformFile_writePlatformFile_sameFile_throws() = runTest {
+        assertFailsWith<FileKitException> {
+            textFile write textFile
+        }
+    }
+
+    @Test
+    fun PlatformFile_writePlatformFile_directorySource_throws() = runTest {
+        val destination = resourceDirectory / "directory-source-target.txt"
+        try {
+            assertFailsWith<FileKitException> {
+                destination write resourceDirectory
+            }
+        } finally {
+            if (destination.exists()) {
+                destination.delete(mustExist = false)
+            }
+        }
     }
 
     @Test

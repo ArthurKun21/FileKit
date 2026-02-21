@@ -585,7 +585,11 @@ private fun getUriFileSize(uri: Uri): Long? {
     val queryUri = uri.toDocumentUriForMetadata()
     return FileKit.context.contentResolver.query(queryUri, null, null, null, null)?.use { cursor ->
         val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-        if (cursor.moveToFirst()) cursor.getLong(sizeIndex) else null
+        if (sizeIndex == -1 || !cursor.moveToFirst() || cursor.isNull(sizeIndex)) {
+            null
+        } else {
+            cursor.getLong(sizeIndex)
+        }
     }
 }
 
@@ -593,7 +597,11 @@ private fun getUriFileName(uri: Uri): String {
     val queryUri = uri.toDocumentUriForMetadata()
     return FileKit.context.contentResolver.query(queryUri, null, null, null, null)?.use { cursor ->
         val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        if (cursor.moveToFirst()) cursor.getString(nameIndex) else null
+        if (nameIndex == -1 || !cursor.moveToFirst() || cursor.isNull(nameIndex)) {
+            null
+        } else {
+            cursor.getString(nameIndex)
+        }
     } ?: uri.lastPathSegment ?: "" // Fallback to the Uri's last path segment
 }
 

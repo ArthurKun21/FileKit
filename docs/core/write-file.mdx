@@ -50,13 +50,17 @@ fun writeLargeFile() {
         // Write bytes
         val bytes = ByteArray(1024) { it.toByte() }
         bufferedSink.write(bytes)
-        
-        // Write from another source
-        val sourceFile = PlatformFile("/path/to/source.dat")
-        bufferedSink.write(sourceFile.source(), sourceFile.size())
     }
+
+    // Copy from another source file (safe for unknown-size provider-backed files)
+    val sourceFile = PlatformFile("/path/to/source.dat")
+    sourceFile.copyTo(file)
 }
 ```
+
+<Note>
+Some provider-backed files (for example, certain Android `content://` URIs) may not expose a reliable size ahead of time. Prefer `destination.write(sourceFile)` or `sourceFile.copyTo(destination)` for robust streaming copy behavior.
+</Note>
 
 ## Appending to Files
 
