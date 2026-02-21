@@ -191,7 +191,9 @@ private fun FileKit.writeVideoToGallery(
             MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         }
 
-        else -> MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        else -> {
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        }
     }
     val videoUri = resolver.insert(videoCollection, videoDetails) ?: return
 
@@ -212,18 +214,21 @@ private fun FileKit.writeVideoToGallery(
 }
 
 private fun resolveVideoMimeType(file: PlatformFile, filename: String): String {
-    file.mimeType()
+    file
+        .mimeType()
         ?.toString()
         ?.normalizeMime()
         ?.takeIf(::isVideoMime)
         ?.let { return it }
 
-    val extension = filename.substringAfterLast('.', "")
+    val extension = filename
+        .substringAfterLast('.', "")
         .lowercase()
         .takeIf { it.isNotBlank() }
         ?: return "video/mp4"
 
-    return MimeTypeMap.getSingleton()
+    return MimeTypeMap
+        .getSingleton()
         .getMimeTypeFromExtension(extension)
         ?.normalizeMime()
         ?.takeIf(::isVideoMime)
