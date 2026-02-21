@@ -5,7 +5,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.net.Uri
 import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import androidx.annotation.IntRange
@@ -15,11 +17,9 @@ import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.calculateNewDimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.io.Buffer
 import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 import java.lang.ref.WeakReference
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -76,19 +76,51 @@ public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
 ): Unit = withContext(Dispatchers.IO) {
+    val relativePath = mediaRelativePath()
     val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
     } else {
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI
     }
 
-    val imageDetails = ContentValues().apply {
+    val details = ContentValues().apply {
         put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+        }
     }
 
+    writeMediaToGallery(
+        collection = collection,
+        details = details,
+        mediaLabel = "image",
+        filename = filename,
+        writer = { destination -> destination write bytes },
+    )
+}
+
+private suspend fun FileKit.writeMediaToGallery(
+    collection: Uri,
+    details: ContentValues,
+    mediaLabel: String,
+    filename: String,
+    writer: suspend (PlatformFile) -> Unit,
+    onWritten: suspend (Uri) -> Unit = {},
+) {
     val resolver = context.contentResolver
-    resolver.insert(collection, imageDetails)?.let { imageUri ->
-        resolver.openOutputStream(imageUri)?.use { it.write(bytes + ByteArray(1)) }
+    val mediaUri = resolver.insert(collection, details)
+        ?: throw FileKitException("Failed to create $mediaLabel entry in MediaStore for filename: $filename")
+
+    try {
+        val destination = PlatformFile(mediaUri)
+        writer(destination)
+        onWritten(mediaUri)
+    } catch (error: Exception) {
+        resolver.delete(mediaUri, null, null)
+        if (error is FileKitException) {
+            throw error
+        }
+        throw FileKitException("Failed to save $mediaLabel to gallery", error)
     }
 }
 
@@ -166,23 +198,21 @@ public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
 ): Unit = withContext(Dispatchers.IO) {
-    val input = openInputStream(file) ?: return@withContext
     val mimeType = resolveVideoMimeType(file = file, filename = filename)
-    writeVideoToGallery(filename = filename, mimeType = mimeType) { output ->
-        input.use { it.copyTo(output) }
-    }
+    writeVideoToGallery(file = file, filename = filename, mimeType = mimeType)
 }
 
-private fun FileKit.writeVideoToGallery(
+private suspend fun FileKit.writeVideoToGallery(
+    file: PlatformFile,
     filename: String,
     mimeType: String,
-    writer: (OutputStream) -> Unit,
 ) {
-    val resolver = context.contentResolver
-    val videoDetails = ContentValues().apply {
+    val relativePath = mediaRelativePath()
+    val details = ContentValues().apply {
         put(MediaStore.Video.Media.DISPLAY_NAME, filename)
         put(MediaStore.Video.Media.MIME_TYPE, mimeType)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
     }
@@ -195,21 +225,21 @@ private fun FileKit.writeVideoToGallery(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI
         }
     }
-    val videoUri = resolver.insert(videoCollection, videoDetails) ?: return
-
-    try {
-        resolver.openOutputStream(videoUri)?.use(writer)
-            ?: throw IOException("Could not open output stream for URI: $videoUri")
-
+    writeMediaToGallery(
+        collection = videoCollection,
+        details = details,
+        mediaLabel = "video",
+        filename = filename,
+        writer = { destination ->
+            copyPlatformFile(source = file, destination = destination)
+        },
+    ) { videoUri ->
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val completed = ContentValues().apply {
                 put(MediaStore.Video.Media.IS_PENDING, 0)
             }
-            resolver.update(videoUri, completed, null, null)
+            context.contentResolver.update(videoUri, completed, null, null)
         }
-    } catch (error: Exception) {
-        resolver.delete(videoUri, null, null)
-        throw error
     }
 }
 
@@ -239,8 +269,61 @@ private fun String.normalizeMime() = substringBefore(';').trim().lowercase()
 
 private fun isVideoMime(mime: String) = mime.startsWith("video/")
 
-private fun FileKit.openInputStream(file: PlatformFile): InputStream? =
-    when (val source = file.androidFile) {
-        is AndroidFile.FileWrapper -> source.file.inputStream()
-        is AndroidFile.UriWrapper -> context.contentResolver.openInputStream(source.uri)
+// TODO replace by PlatformFile.copyTo ?
+private fun copyPlatformFile(
+    source: PlatformFile,
+    destination: PlatformFile,
+) {
+    val sourceLabel = source.path
+    val destinationLabel = destination.path
+    try {
+        source.source().use { rawSource ->
+            destination.sink().use { rawSink ->
+                val buffer = Buffer()
+                while (true) {
+                    val bytesRead = rawSource.readAtMostTo(buffer, COPY_BUFFER_SIZE_BYTES)
+                    if (bytesRead == -1L) {
+                        break
+                    }
+                    rawSink.write(buffer, bytesRead)
+                }
+                rawSink.flush()
+            }
+        }
+    } catch (error: Exception) {
+        if (error is FileKitException) {
+            throw error
+        }
+        throw FileKitException(
+            message = "Failed to copy media from $sourceLabel to $destinationLabel",
+            cause = error,
+        )
     }
+}
+
+private fun FileKit.mediaRelativePath(): String {
+    val appLabel = context.applicationInfo
+        .loadLabel(context.packageManager)
+        .toString()
+        .takeIf { it.isNotBlank() }
+        ?: context.packageName.substringAfterLast('.')
+
+    val folderName = sanitizeDirectorySegment(appLabel)
+    return "${Environment.DIRECTORY_DCIM}/$folderName"
+}
+
+private fun sanitizeDirectorySegment(value: String): String {
+    val invalidChars = setOf('\\', '/', ':', '*', '?', '"', '<', '>', '|')
+    val sanitized = value
+        .trim()
+        .map { char -> if (char in invalidChars) '_' else char }
+        .joinToString(separator = "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+
+    return sanitized.ifBlank { DEFAULT_MEDIA_SUBDIRECTORY }
+}
+
+private const val DEFAULT_MEDIA_SUBDIRECTORY = "FileKit"
+
+private const val COPY_BUFFER_SIZE_BYTES: Long = 8_192L
