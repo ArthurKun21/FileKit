@@ -4,14 +4,13 @@ import androidx.compose.runtime.Composable
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.shareFile
-import io.github.vinceglb.filekit.sample.shared.ui.icons.Images
 import io.github.vinceglb.filekit.sample.shared.ui.icons.LucideIcons
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Share
-import io.github.vinceglb.filekit.sample.shared.util.isImageFile
-import io.github.vinceglb.filekit.saveImageToGallery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlin.uuid.ExperimentalUuidApi
 
+@OptIn(ExperimentalUuidApi::class)
 @Composable
 internal actual fun FileDetailsMobileActions(
     file: PlatformFile,
@@ -27,17 +26,4 @@ internal actual fun FileDetailsMobileActions(
             }
         },
     )
-
-    // Save Image to Gallery
-    if (file.isImageFile()) {
-        FileDetailsActionRow(
-            text = "Save Image to Gallery",
-            icon = LucideIcons.Images,
-            onClick = {
-                scope.launch {
-                    FileKit.saveImageToGallery(file = file)
-                }
-            },
-        )
-    }
 }

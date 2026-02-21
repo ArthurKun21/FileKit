@@ -1,9 +1,16 @@
 package io.github.vinceglb.filekit
 
+import android.content.ContentProvider
+import android.content.ContentResolver
+import android.content.ContentValues
+import android.content.Context
+import android.content.ContextWrapper
+import android.database.Cursor
 import android.net.Uri
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.exceptions.FileKitUriPathNotSupportedException
 import io.github.vinceglb.filekit.mimeType.MimeType
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -23,6 +30,14 @@ class PlatformFileAndroidTest {
     fun setup() {
         // Initialize FileKit with Robolectric's application context
         FileKit.manualFileKitCoreInitialization(RuntimeEnvironment.getApplication())
+    }
+
+    private fun initializeFileKitWithResolver(resolver: ContentResolver) {
+        val appContext = RuntimeEnvironment.getApplication() as Context
+        val wrappedContext = object : ContextWrapper(appContext) {
+            override fun getContentResolver(): ContentResolver = resolver
+        }
+        FileKit.manualFileKitCoreInitialization(wrappedContext)
     }
 
     private val resourceDirectory = FileKit.projectDir / "src/nonWebTest/resources"
@@ -91,4 +106,52 @@ class PlatformFileAndroidTest {
                 exception.message?.contains("Could not create child file") == true,
         )
     }
+
+    @Test
+    fun saveVideoToGallery_sourceStreamCannotBeOpened_throwsFileKitException() {
+        runBlocking {
+            val file = PlatformFile(Uri.parse("content://invalid.provider/missing-video.mp4"))
+
+            assertFailsWith<FileKitException> {
+                FileKit.saveVideoToGallery(file = file, filename = "video.mp4")
+            }
+        }
+    }
+
+    @Test
+    fun saveImageToGallery_whenMediaStoreInsertFails_throwsFileKitException() {
+        runBlocking {
+            val resolver = ContentResolver.wrap(NullInsertContentProvider())
+            initializeFileKitWithResolver(resolver)
+
+            assertFailsWith<FileKitException> {
+                FileKit.saveImageToGallery(bytes = byteArrayOf(1, 2, 3), filename = "image.jpg")
+            }
+        }
+    }
+}
+
+private class NullInsertContentProvider : ContentProvider() {
+    override fun onCreate(): Boolean = true
+
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?,
+    ): Cursor? = null
+
+    override fun getType(uri: Uri): String? = null
+
+    override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = 0
 }

@@ -35,9 +35,15 @@ import io.github.vinceglb.filekit.nameWithoutExtension
 import io.github.vinceglb.filekit.parent
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Copy
 import io.github.vinceglb.filekit.sample.shared.ui.icons.ExternalLink
+import io.github.vinceglb.filekit.sample.shared.ui.icons.Film
+import io.github.vinceglb.filekit.sample.shared.ui.icons.Images
 import io.github.vinceglb.filekit.sample.shared.ui.icons.LucideIcons
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Trash
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Truck
+import io.github.vinceglb.filekit.sample.shared.util.isImageFile
+import io.github.vinceglb.filekit.sample.shared.util.isVideoFile
+import io.github.vinceglb.filekit.saveImageToGallery
+import io.github.vinceglb.filekit.saveVideoToGallery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -107,6 +113,32 @@ internal actual fun FileDetailsActions(
             file = file,
             scope = scope,
         )
+
+        // Save Image to Gallery
+        if (file.isImageFile()) {
+            FileDetailsActionRow(
+                text = "Save Image to Gallery",
+                icon = LucideIcons.Images,
+                onClick = {
+                    scope.launch {
+                        FileKit.saveImageToGallery(file = file)
+                    }
+                },
+            )
+        }
+
+        // Save Video to Gallery
+        if (file.isVideoFile()) {
+            FileDetailsActionRow(
+                text = "Save Video to Gallery",
+                icon = LucideIcons.Film,
+                onClick = {
+                    scope.launch {
+                        FileKit.saveVideoToGallery(file = file)
+                    }
+                },
+            )
+        }
 
         // Delete File
         if (file.isRegularFile()) {

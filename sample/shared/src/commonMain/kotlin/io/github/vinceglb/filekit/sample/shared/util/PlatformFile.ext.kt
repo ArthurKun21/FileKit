@@ -32,3 +32,25 @@ internal fun PlatformFile.isImageFile(): Boolean {
 
     return ext in imageExtensions
 }
+
+internal fun PlatformFile.isVideoFile(): Boolean {
+    if (mimeType()?.primaryType?.lowercase() == "video") {
+        return true
+    }
+
+    val ext = extension.lowercase()
+    val videoExtensions = setOf(
+        "3gp",
+        "avi",
+        "m4v",
+        "mkv",
+        "mov",
+        "mp4",
+        "mpeg",
+        "mpg",
+        "webm",
+        "wmv",
+    )
+
+    return ext in videoExtensions
+}

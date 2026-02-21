@@ -15,6 +15,7 @@ import platform.Foundation.NSData
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSMakeRect
 import platform.Foundation.NSMakeSize
+import platform.Foundation.NSMoviesDirectory
 import platform.Foundation.NSPicturesDirectory
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
@@ -59,10 +60,30 @@ public val FileKit.pictureDir: PlatformFile
         ?.let(::PlatformFile)
         ?: throw IllegalStateException("Could not find pictures directory")
 
+/**
+ * Returns the videos directory for the current user.
+ */
+@Suppress("UnusedReceiverParameter")
+public val FileKit.videoDir: PlatformFile
+    get() = NSFileManager
+        .defaultManager
+        .URLsForDirectory(NSMoviesDirectory, NSUserDomainMask)
+        .firstOrNull()
+        ?.let { it as NSURL? }
+        ?.let(::PlatformFile)
+        ?: throw IllegalStateException("Could not find videos directory")
+
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
 ): Unit = FileKit.pictureDir / filename write bytes
+
+public actual suspend fun FileKit.saveVideoToGallery(
+    file: PlatformFile,
+    filename: String,
+) {
+    FileKit.videoDir / filename write file
+}
 
 @OptIn(ExperimentalForeignApi::class)
 internal actual fun compress(
