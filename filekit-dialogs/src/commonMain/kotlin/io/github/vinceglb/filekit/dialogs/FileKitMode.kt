@@ -30,8 +30,13 @@ public sealed class FileKitMode<PickerResult, ConsumedResult> {
 
         override suspend fun parseResult(flow: Flow<FileKitPickerState<List<PlatformFile>>>): PlatformFile? = flow.last().let {
             when (it) {
-                is FileKitPickerState.Completed -> it.result.firstOrNull()
-                else -> null
+                is FileKitPickerState.Completed -> {
+                    it.result.firstOrNull()
+                }
+
+                else -> {
+                    null
+                }
             }
         }
 
@@ -57,10 +62,15 @@ public sealed class FileKitMode<PickerResult, ConsumedResult> {
 
         override suspend fun parseResult(flow: Flow<FileKitPickerState<List<PlatformFile>>>): List<PlatformFile>? = flow.last().let {
             when (it) {
-                is FileKitPickerState.Completed -> maxItems
-                    ?.let { max -> it.result.take(max) }
-                    ?: it.result
-                else -> null
+                is FileKitPickerState.Completed -> {
+                    maxItems
+                        ?.let { max -> it.result.take(max) }
+                        ?: it.result
+                }
+
+                else -> {
+                    null
+                }
             }
         }
 
