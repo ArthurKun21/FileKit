@@ -59,7 +59,8 @@ internal fun resolveKnownFolderPath(type: FileKitUserDirectory): String? =
 
 internal fun parseXdgUserDirsConfig(config: String): Map<String, String> =
     buildMap {
-        config.lineSequence()
+        config
+            .lineSequence()
             .map(String::trim)
             .filter(String::isNotBlank)
             .filterNot { it.startsWith("#") }

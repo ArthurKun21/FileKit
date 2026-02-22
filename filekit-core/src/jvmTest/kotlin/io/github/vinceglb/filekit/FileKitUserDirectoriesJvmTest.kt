@@ -139,7 +139,7 @@ class FileKitUserDirectoriesJvmTest {
     }
 
     @Test
-    fun FileKit_userDirectoryWrappers_matchTypedResolver() {
+    fun fileKitUserDirectoryWrappers_matchTypedResolver() {
         assertEquals(
             FileKit.userDirectory(FileKitUserDirectory.Downloads).path,
             FileKit.downloadsDir.path,
@@ -164,7 +164,7 @@ class FileKitUserDirectoriesJvmTest {
 
     @Suppress("DEPRECATION")
     @Test
-    fun FileKit_deprecatedSingularWrappers_remainCompatible() {
+    fun fileKitDeprecatedSingularWrappers_remainCompatible() {
         assertEquals(
             FileKit.downloadsDir.path,
             FileKit.downloadDir.path,
@@ -180,7 +180,7 @@ class FileKitUserDirectoriesJvmTest {
     }
 
     @Test
-    fun FileKit_userDirectoryOrNull_returnsDirectoryForAllTypesOnJvm() {
+    fun fileKitUserDirectoryOrNull_returnsDirectoryForAllTypesOnJvm() {
         FileKitUserDirectory.entries.forEach { type ->
             val dirOrNull = FileKit.userDirectoryOrNull(type)
             assertNotNull(dirOrNull)
