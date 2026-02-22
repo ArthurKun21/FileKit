@@ -156,7 +156,7 @@ public actual val PlatformFile.nameWithoutExtension: String
 
         is AndroidFile.UriWrapper -> when {
             isDirectory() -> getUriFileName(androidFile.uri)
-            else -> getUriFileName(androidFile.uri).substringBeforeLast(".", "")
+            else -> getUriFileName(androidFile.uri).substringBeforeLast(".")
         }
     }
 
