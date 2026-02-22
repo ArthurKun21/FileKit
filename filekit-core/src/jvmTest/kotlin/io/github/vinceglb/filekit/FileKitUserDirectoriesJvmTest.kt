@@ -2,6 +2,7 @@ package io.github.vinceglb.filekit
 
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.Platform
+import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -9,6 +10,23 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class FileKitUserDirectoriesJvmTest {
+    @Test
+    fun defaultLinuxUserDirsConfig_returnsNullWhenConfigIsUnreadable() {
+        val tempDir = Files.createTempDirectory("filekit-userdirs-test").toFile()
+        val configDir = Files.createDirectory(tempDir.toPath().resolve("config")).toFile()
+        Files.createDirectory(configDir.toPath().resolve("user-dirs.dirs"))
+
+        val config = defaultLinuxUserDirsConfig { key ->
+            when (key) {
+                "HOME" -> tempDir.path
+                "XDG_CONFIG_HOME" -> configDir.path
+                else -> null
+            }
+        }
+
+        assertNull(config)
+    }
+
     @Test
     fun resolveJvmUserDirectoryPath_linuxPrefersEnvOverConfigAndFallback() {
         val env = mapOf(

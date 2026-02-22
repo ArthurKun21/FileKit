@@ -41,7 +41,9 @@ internal fun defaultLinuxUserDirsConfig(envProvider: (String) -> String?): Strin
         ?.takeIf(String::isNotBlank)
         ?: "$home/.config"
     val configFile = File(configHome, "user-dirs.dirs")
-    return configFile.takeIf(File::exists)?.readText()
+    return configFile.takeIf(File::exists)?.let { file ->
+        runCatching(file::readText).getOrNull()
+    }
 }
 
 internal fun resolveKnownFolderPath(type: FileKitUserDirectory): String? =
