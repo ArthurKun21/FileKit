@@ -10,6 +10,7 @@ import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.ObjCObjectVar
+import kotlinx.cinterop.UnsafeNumber
 import kotlinx.cinterop.alloc
 import kotlinx.cinterop.allocArray
 import kotlinx.cinterop.memScoped
@@ -176,7 +177,7 @@ private fun mimeTypeFromUti(uti: String): String? {
     }
 }
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
 private fun cfStringToKString(cfString: CFStringRef?): String? {
     if (cfString == null) {
         return null
@@ -190,7 +191,7 @@ private fun cfStringToKString(cfString: CFStringRef?): String? {
     ) + 1
 
     return memScoped {
-        val buffer = allocArray<ByteVar>(maxSize.toInt())
+        val buffer = allocArray<ByteVar>(maxSize)
 
         if (
             CFStringGetCString(
@@ -213,7 +214,7 @@ public actual fun PlatformFile.startAccessingSecurityScopedResource(): Boolean =
 public actual fun PlatformFile.stopAccessingSecurityScopedResource(): Unit =
     nsUrl.stopAccessingSecurityScopedResource()
 
-@OptIn(ExperimentalForeignApi::class)
+@OptIn(ExperimentalForeignApi::class, UnsafeNumber::class)
 public actual suspend fun PlatformFile.bookmarkData(): BookmarkData = withContext(Dispatchers.IO) {
     withScopedAccess {
         val bookmarkData = nsUrl.bookmarkDataWithOptions(
@@ -228,7 +229,7 @@ public actual suspend fun PlatformFile.bookmarkData(): BookmarkData = withContex
 
 public actual fun PlatformFile.releaseBookmark() {}
 
-@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
+@OptIn(ExperimentalForeignApi::class, BetaInteropApi::class, UnsafeNumber::class)
 public actual fun PlatformFile.Companion.fromBookmarkData(
     bookmarkData: BookmarkData,
 ): PlatformFile = memScoped {
