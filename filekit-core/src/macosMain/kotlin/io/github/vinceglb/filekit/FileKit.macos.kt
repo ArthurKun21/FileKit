@@ -12,9 +12,12 @@ import platform.AppKit.representationUsingType
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
 import platform.Foundation.NSData
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSDownloadsDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSMakeRect
 import platform.Foundation.NSMakeSize
+import platform.Foundation.NSMusicDirectory
 import platform.Foundation.NSMoviesDirectory
 import platform.Foundation.NSPicturesDirectory
 import platform.Foundation.NSURL
@@ -47,42 +50,24 @@ public actual val FileKit.filesDir: PlatformFile
 public actual val FileKit.projectDir: PlatformFile
     get() = PlatformFile(".")
 
-/**
- * Returns the pictures directory for the current user.
- */
-@Suppress("UnusedReceiverParameter")
-public val FileKit.pictureDir: PlatformFile
-    get() = NSFileManager
+internal actual fun FileKit.platformUserDirectoryOrNull(type: FileKitUserDirectory): PlatformFile? =
+    NSFileManager
         .defaultManager
-        .URLsForDirectory(NSPicturesDirectory, NSUserDomainMask)
+        .URLsForDirectory(type.macosDirectoryType, NSUserDomainMask)
         .firstOrNull()
         ?.let { it as NSURL? }
         ?.let(::PlatformFile)
-        ?: throw IllegalStateException("Could not find pictures directory")
-
-/**
- * Returns the videos directory for the current user.
- */
-@Suppress("UnusedReceiverParameter")
-public val FileKit.videoDir: PlatformFile
-    get() = NSFileManager
-        .defaultManager
-        .URLsForDirectory(NSMoviesDirectory, NSUserDomainMask)
-        .firstOrNull()
-        ?.let { it as NSURL? }
-        ?.let(::PlatformFile)
-        ?: throw IllegalStateException("Could not find videos directory")
 
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-): Unit = FileKit.pictureDir / filename write bytes
+): Unit = FileKit.picturesDir / filename write bytes
 
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
 ) {
-    FileKit.videoDir / filename write file
+    FileKit.videosDir / filename write file
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -135,3 +120,12 @@ private fun NSImage.resizeTo(newWidth: Int, newHeight: Int): NSImage {
 
     return newImage
 }
+
+private val FileKitUserDirectory.macosDirectoryType: ULong
+    get() = when (this) {
+        FileKitUserDirectory.Downloads -> NSDownloadsDirectory
+        FileKitUserDirectory.Pictures -> NSPicturesDirectory
+        FileKitUserDirectory.Videos -> NSMoviesDirectory
+        FileKitUserDirectory.Music -> NSMusicDirectory
+        FileKitUserDirectory.Documents -> NSDocumentDirectory
+    }
