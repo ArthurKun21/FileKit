@@ -73,19 +73,20 @@ public actual suspend fun FileKit.openFileSaver(
 ): PlatformFile? {
     // Create an NSSavePanel
     val nsSavePanel = NSSavePanel()
+    val normalizedExtension = normalizeFileSaverExtension(extension)
 
     // Set the initial directory
     directory?.let { nsSavePanel.directoryURL = NSURL.fileURLWithPath(it.path) }
 
     // Set the file name
-    nsSavePanel.nameFieldStringValue = when {
-        extension != null -> "$suggestedName.$extension"
-        else -> suggestedName
-    }
+    nsSavePanel.nameFieldStringValue = buildFileSaverSuggestedName(
+        suggestedName = suggestedName,
+        extension = normalizedExtension,
+    )
 
     // Set the file extension
-    extension?.let {
-        nsSavePanel.allowedFileTypes = listOf(extension)
+    normalizedExtension?.let {
+        nsSavePanel.allowedFileTypes = listOf(it)
     }
 
     // Accept the creation of directories

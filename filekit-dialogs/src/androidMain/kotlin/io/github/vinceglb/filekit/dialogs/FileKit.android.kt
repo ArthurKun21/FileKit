@@ -62,9 +62,13 @@ public actual suspend fun FileKit.openFileSaver(
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? {
     val registry = FileKit.registry
-    val mimeType = getMimeType(extension)
+    val normalizedExtension = normalizeFileSaverExtension(extension)
+    val mimeType = getMimeType(normalizedExtension)
     val contract = ActivityResultContracts.CreateDocument(mimeType)
-    val fileName = buildSuggestedFileName(suggestedName = suggestedName, extension = extension)
+    val fileName = buildFileSaverSuggestedName(
+        suggestedName = suggestedName,
+        extension = normalizedExtension,
+    )
     val uri = awaitActivityResult(
         registry = registry,
         contract = contract,
@@ -369,21 +373,6 @@ private suspend fun <I, O> awaitActivityResult(
                 continuation.resumeWithException(error)
             }
         }
-    }
-}
-
-private fun buildSuggestedFileName(
-    suggestedName: String,
-    extension: String?,
-): String {
-    val normalizedExtension = extension
-        ?.trim()
-        ?.removePrefix(".")
-        ?.takeIf { it.isNotBlank() }
-
-    return when (normalizedExtension) {
-        null -> suggestedName
-        else -> "$suggestedName.$normalizedExtension"
     }
 }
 
