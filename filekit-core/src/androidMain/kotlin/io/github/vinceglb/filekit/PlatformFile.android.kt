@@ -699,9 +699,16 @@ private object UriMetadataResolver {
 
     private fun fallbackDisplayName(uri: Uri): String = when {
         uri.isPhotoPickerUri() -> {
-            uri.photoPickerProviderName()
+            val providerName = uri.photoPickerProviderName()
+            val uniqueSuffix = uri.extractPhotoPickerMediaId()?.toString()
                 ?: uri.lastPathSegment
-                ?: ""
+
+            when {
+                providerName != null && uniqueSuffix != null -> "$providerName-$uniqueSuffix"
+                providerName != null -> providerName
+                uniqueSuffix != null -> uniqueSuffix
+                else -> ""
+            }
         }
 
         else -> uri.lastPathSegment ?: ""

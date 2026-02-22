@@ -221,9 +221,30 @@ class PlatformFileAndroidTest {
         ShadowContentResolver.registerProviderInternal("media", provider)
 
         val file = PlatformFile(pickerUri)
-        assertEquals(expected = "photopicker", actual = file.name)
+        assertEquals(expected = "photopicker-18", actual = file.name)
         assertEquals(expected = "", actual = file.extension)
-        assertEquals(expected = "", actual = file.nameWithoutExtension)
+        assertEquals(expected = "photopicker-18", actual = file.nameWithoutExtension)
+    }
+
+    @Test
+    fun PlatformFile_name_photoPickerFallback_keepsDistinctNamesForDifferentUris() {
+        val firstPickerUri = Uri.parse("content://media/picker/0/com.android.providers.media.photopicker/media/18")
+        val secondPickerUri = Uri.parse("content://media/picker/0/com.android.providers.media.photopicker/media/19")
+        val provider = PhotoPickerNameContentProvider(
+            pickerUri = firstPickerUri,
+            pickerDisplayName = "18.jpg",
+            mediaStoreDisplayName = null,
+            throwOnMediaStoreQuery = true,
+        ).apply {
+            registerPickerDisplayName(secondPickerUri, "19.jpg")
+        }
+        ShadowContentResolver.registerProviderInternal("media", provider)
+
+        val firstFile = PlatformFile(firstPickerUri)
+        val secondFile = PlatformFile(secondPickerUri)
+
+        assertEquals(expected = "photopicker-18", actual = firstFile.name)
+        assertEquals(expected = "photopicker-19", actual = secondFile.name)
     }
 
     @Test
@@ -354,11 +375,16 @@ private class MissingSizeContentProvider(
 }
 
 private class PhotoPickerNameContentProvider(
-    private val pickerUri: Uri,
-    private val pickerDisplayName: String,
+    pickerUri: Uri,
+    pickerDisplayName: String,
     private val mediaStoreDisplayName: String?,
     private val throwOnMediaStoreQuery: Boolean = false,
 ) : ContentProvider() {
+    private val pickerDisplayNamesByUri = mutableMapOf(pickerUri to pickerDisplayName)
+
+    fun registerPickerDisplayName(uri: Uri, displayName: String) {
+        pickerDisplayNamesByUri[uri] = displayName
+    }
 
     override fun onCreate(): Boolean = true
 
@@ -370,9 +396,9 @@ private class PhotoPickerNameContentProvider(
         sortOrder: String?,
     ): Cursor {
         return when {
-            uri == pickerUri -> {
+            pickerDisplayNamesByUri.containsKey(uri) -> {
                 MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)).apply {
-                    addRow(arrayOf(pickerDisplayName, null))
+                    addRow(arrayOf(pickerDisplayNamesByUri.getValue(uri), null))
                 }
             }
 
@@ -382,9 +408,9 @@ private class PhotoPickerNameContentProvider(
                 }
 
                 val requestedId = selectionArgs?.firstOrNull()?.toLongOrNull()
-                val pickerId = pickerUri.lastPathSegment?.toLongOrNull()
+                val pickerIds = pickerDisplayNamesByUri.keys.mapNotNull { it.lastPathSegment?.toLongOrNull() }
                 MatrixCursor(arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)).apply {
-                    if (requestedId != null && requestedId == pickerId && mediaStoreDisplayName != null) {
+                    if (requestedId != null && requestedId in pickerIds && mediaStoreDisplayName != null) {
                         addRow(arrayOf(mediaStoreDisplayName))
                     }
                 }
