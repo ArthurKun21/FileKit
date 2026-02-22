@@ -81,9 +81,10 @@ public actual suspend fun FileKit.openFileSaver(
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? = withContext(Dispatchers.IO) {
+    val normalizedExtension = normalizeFileSaverExtension(extension)
     val result = PlatformFilePicker.current.openFileSaver(
         suggestedName = suggestedName,
-        extension = extension,
+        extension = normalizedExtension,
         directory = directory,
         dialogSettings = dialogSettings,
     )
