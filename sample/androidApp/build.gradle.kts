@@ -45,4 +45,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     debugImplementation(libs.compose.uiTooling)
+
+    // Leak Canary
+    debugImplementation(libs.leakcanary.android)
 }
