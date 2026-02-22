@@ -21,6 +21,6 @@ public fun NSData.toByteArray(): ByteArray = let { nsData ->
 public fun ByteArray.toNSData(): NSData = usePinned {
     NSData.create(
         bytes = it.addressOf(0),
-        length = this.size.toUInt(),
+        length = this.size.toULong(),
     )
 }
