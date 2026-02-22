@@ -9,8 +9,10 @@ import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
 import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
@@ -26,11 +28,13 @@ import io.github.vinceglb.filekit.extension
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import kotlin.coroutines.resumeWithException
 
 internal actual suspend fun FileKit.platformOpenFilePicker(
     type: FileKitType,
@@ -56,27 +60,17 @@ public actual suspend fun FileKit.openFileSaver(
     extension: String?,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
-): PlatformFile? = withContext(Dispatchers.IO) {
-    suspendCoroutine { continuation ->
-        // Throw exception if registry is not initialized
-        val registry = FileKit.registry
-
-        // It doesn't really matter what the key is, just that it is unique
-        val key = UUID.randomUUID().toString()
-
-        // Get MIME type
-        val mimeType = getMimeType(extension)
-
-        // Create Launcher
-        val contract = ActivityResultContracts.CreateDocument(mimeType)
-        val launcher = registry.register(key, contract) { uri ->
-            val platformFile = uri?.let { PlatformFile(it) }
-            continuation.resume(platformFile)
-        }
-
-        // Launch
-        launcher.launch("$suggestedName.$extension")
-    }
+): PlatformFile? {
+    val registry = FileKit.registry
+    val mimeType = getMimeType(extension)
+    val contract = ActivityResultContracts.CreateDocument(mimeType)
+    val fileName = buildSuggestedFileName(suggestedName = suggestedName, extension = extension)
+    val uri = awaitActivityResult(
+        registry = registry,
+        contract = contract,
+        input = fileName,
+    )
+    return uri?.let(::PlatformFile)
 }
 
 /**
@@ -89,22 +83,16 @@ public actual suspend fun FileKit.openFileSaver(
 public actual suspend fun FileKit.openDirectoryPicker(
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
-): PlatformFile? = withContext(Dispatchers.IO) {
-    // Throw exception if registry is not initialized
+): PlatformFile? {
     val registry = FileKit.registry
-
-    // It doesn't really matter what the key is, just that it is unique
-    val key = UUID.randomUUID().toString()
-
-    suspendCoroutine { continuation ->
-        val contract = ActivityResultContracts.OpenDocumentTree()
-        val launcher = registry.register(key, contract) { treeUri ->
-            val platformDirectory = treeUri?.let(::PlatformFile)
-            continuation.resume(platformDirectory)
-        }
-        val initialUri = directory?.path?.toUri()
-        launcher.launch(initialUri)
-    }
+    val contract = ActivityResultContracts.OpenDocumentTree()
+    val initialUri = directory?.path?.toUri()
+    val treeUri = awaitActivityResult(
+        registry = registry,
+        contract = contract,
+        input = initialUri,
+    )
+    return treeUri?.let(::PlatformFile)
 }
 
 /**
@@ -121,26 +109,16 @@ public actual suspend fun FileKit.openCameraPicker(
     cameraFacing: FileKitCameraFacing,
     destinationFile: PlatformFile,
     openCameraSettings: FileKitOpenCameraSettings,
-): PlatformFile? = withContext(Dispatchers.IO) {
-    // Throw exception if registry is not initialized
+): PlatformFile? {
     val registry = FileKit.registry
-
-    // It doesn't really matter what the key is, just that it is unique
-    val key = UUID.randomUUID().toString()
-
-    val isSaved = suspendCoroutine { continuation ->
-        val contract = TakePictureWithCameraFacing(cameraFacing)
-        val launcher = registry.register(key, contract) { isSaved ->
-            continuation.resume(isSaved)
-        }
-        val uri = destinationFile.toAndroidUri(openCameraSettings.authority)
-        launcher.launch(uri)
-    }
-
-    when (isSaved) {
-        true -> destinationFile
-        else -> null
-    }
+    val contract = TakePictureWithCameraFacing(cameraFacing)
+    val uri = destinationFile.toAndroidUri(openCameraSettings.authority)
+    val isSaved = awaitActivityResult(
+        registry = registry,
+        contract = contract,
+        input = uri,
+    )
+    return if (isSaved) destinationFile else null
 }
 
 /**
@@ -289,79 +267,124 @@ public actual fun FileKit.openFileWithDefaultApplication(
 private suspend fun callFilePicker(
     type: FileKitType,
     mode: PickerMode,
-): List<PlatformFile>? = withContext(Dispatchers.IO) {
-    // Throw exception if registry is not initialized
+): List<PlatformFile>? {
     val registry = FileKit.registry
 
-    // It doesn't really matter what the key is, just that it is unique
-    val key = UUID.randomUUID().toString()
-
-    val result: List<PlatformFile>? = suspendCoroutine { continuation ->
-        when (type) {
-            FileKitType.Image,
-            FileKitType.Video,
-            FileKitType.ImageAndVideo,
-            -> {
-                val request = when (type) {
-                    FileKitType.Image -> PickVisualMediaRequest(ImageOnly)
-                    FileKitType.Video -> PickVisualMediaRequest(VideoOnly)
-                    FileKitType.ImageAndVideo -> PickVisualMediaRequest(ImageAndVideo)
-                    else -> throw IllegalArgumentException("Unsupported type: $type")
-                }
-
-                val launcher = when {
-                    mode is PickerMode.Single || (mode is PickerMode.Multiple && mode.maxItems == 1) -> {
-                        val contract = PickVisualMedia()
-                        registry.register(key, contract) { uri ->
-                            val result = uri?.let { listOf(PlatformFile(it)) }
-                            continuation.resume(result)
-                        }
-                    }
-
-                    mode is PickerMode.Multiple -> {
-                        val contract = when {
-                            mode.maxItems != null -> PickMultipleVisualMedia(mode.maxItems)
-                            else -> PickMultipleVisualMedia()
-                        }
-                        registry.register(key, contract) { uri ->
-                            val result = uri.map { PlatformFile(it) }
-                            continuation.resume(result)
-                        }
-                    }
-
-                    else -> {
-                        throw IllegalArgumentException("Unsupported mode: $mode")
-                    }
-                }
-                launcher.launch(request)
+    return when (type) {
+        FileKitType.Image,
+        FileKitType.Video,
+        FileKitType.ImageAndVideo,
+        -> {
+            val request = when (type) {
+                FileKitType.Image -> PickVisualMediaRequest(ImageOnly)
+                FileKitType.Video -> PickVisualMediaRequest(VideoOnly)
+                FileKitType.ImageAndVideo -> PickVisualMediaRequest(ImageAndVideo)
             }
 
-            is FileKitType.File -> {
-                when (mode) {
-                    is PickerMode.Single -> {
-                        val contract = ActivityResultContracts.OpenDocument()
-                        val launcher = registry.register(key, contract) { uri ->
-                            val result = uri?.let { listOf(PlatformFile(it)) }
-                            continuation.resume(result)
-                        }
-                        launcher.launch(getMimeTypes(type.extensions))
-                    }
+            when {
+                mode is PickerMode.Single || (mode is PickerMode.Multiple && mode.maxItems == 1) -> {
+                    val contract = PickVisualMedia()
+                    awaitActivityResult(
+                        registry = registry,
+                        contract = contract,
+                        input = request,
+                    )?.let { listOf(PlatformFile(it)) }
+                }
 
-                    is PickerMode.Multiple -> {
-                        // TODO there might be a way to limit the amount of documents, but
-                        //  I haven't found it yet.
-                        val contract = ActivityResultContracts.OpenMultipleDocuments()
-                        val launcher = registry.register(key, contract) { uris ->
-                            val result = uris.map { PlatformFile(it) }
-                            continuation.resume(result)
-                        }
-                        launcher.launch(getMimeTypes(type.extensions))
+                mode is PickerMode.Multiple -> {
+                    val contract = when {
+                        mode.maxItems != null -> PickMultipleVisualMedia(mode.maxItems)
+                        else -> PickMultipleVisualMedia()
                     }
+                    awaitActivityResult(
+                        registry = registry,
+                        contract = contract,
+                        input = request,
+                    ).map(::PlatformFile)
+                }
+
+                else -> {
+                    throw IllegalArgumentException("Unsupported mode: $mode")
+                }
+            }
+        }
+
+        is FileKitType.File -> {
+            when (mode) {
+                is PickerMode.Single -> {
+                    val contract = ActivityResultContracts.OpenDocument()
+                    awaitActivityResult(
+                        registry = registry,
+                        contract = contract,
+                        input = getMimeTypes(type.extensions),
+                    )?.let { listOf(PlatformFile(it)) }
+                }
+
+                is PickerMode.Multiple -> {
+                    // TODO there might be a way to limit the amount of documents, but
+                    //  I haven't found it yet.
+                    val contract = ActivityResultContracts.OpenMultipleDocuments()
+                    awaitActivityResult(
+                        registry = registry,
+                        contract = contract,
+                        input = getMimeTypes(type.extensions),
+                    ).map(::PlatformFile)
                 }
             }
         }
     }
-    result
+}
+
+private suspend fun <I, O> awaitActivityResult(
+    registry: ActivityResultRegistry,
+    contract: ActivityResultContract<I, O>,
+    input: I,
+): O = withContext(Dispatchers.Main.immediate) {
+    suspendCancellableCoroutine { continuation ->
+        var launcher: ActivityResultLauncher<I>? = null
+        val isCleanedUp = AtomicBoolean(false)
+
+        fun cleanup() {
+            if (isCleanedUp.compareAndSet(false, true)) {
+                launcher?.runCatching { unregister() }
+            }
+        }
+
+        val key = UUID.randomUUID().toString()
+
+        launcher = registry.register(key, contract) { output ->
+            cleanup()
+            if (continuation.isActive) {
+                continuation.resume(output)
+            }
+        }
+
+        continuation.invokeOnCancellation { cleanup() }
+
+        try {
+            launcher.launch(input)
+        } catch (error: Throwable) {
+            cleanup()
+            if (continuation.isActive) {
+                continuation.resumeWithException(error)
+            }
+        }
+    }
+}
+
+private fun buildSuggestedFileName(
+    suggestedName: String,
+    extension: String?,
+): String {
+    val normalizedExtension = extension
+        ?.trim()
+        ?.removePrefix(".")
+        ?.takeIf { it.isNotBlank() }
+
+    return when (normalizedExtension) {
+        null -> suggestedName
+        else -> "$suggestedName.$normalizedExtension"
+    }
 }
 
 private fun getMimeTypes(fileExtensions: Set<String>?): Array<String> {
