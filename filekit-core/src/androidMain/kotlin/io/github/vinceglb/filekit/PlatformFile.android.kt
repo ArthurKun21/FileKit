@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import androidx.documentfile.provider.DocumentFile
@@ -581,28 +582,217 @@ public actual fun PlatformFile.Companion.fromBookmarkData(
     return platformFile
 }
 
-private fun getUriFileSize(uri: Uri): Long? {
-    val queryUri = uri.toDocumentUriForMetadata()
-    return FileKit.context.contentResolver.query(queryUri, null, null, null, null)?.use { cursor ->
-        val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-        if (sizeIndex == -1 || !cursor.moveToFirst() || cursor.isNull(sizeIndex)) {
-            null
-        } else {
-            cursor.getLong(sizeIndex)
+private fun getUriFileSize(uri: Uri): Long? = UriMetadataResolver.size(uri)
+
+private fun getUriFileName(uri: Uri): String = UriMetadataResolver.displayName(uri)
+
+private object UriMetadataResolver {
+    fun displayName(uri: Uri): String = resolve(uri).displayName ?: fallbackDisplayName(uri)
+
+    fun size(uri: Uri): Long? = resolve(uri).size
+
+    private fun resolve(uri: Uri): UriMetadata {
+        val queryUri = uri.toDocumentUriForMetadata()
+        val openableMetadata = queryOpenableMetadata(queryUri) ?: UriMetadata.empty
+        val resolvedDisplayName = chooseDisplayName(
+            uri = uri,
+            openableDisplayName = openableMetadata.displayName,
+        )
+        return openableMetadata.copy(displayName = resolvedDisplayName)
+    }
+
+    private fun queryOpenableMetadata(queryUri: Uri): UriMetadata? = try {
+        FileKit.context.contentResolver.query(
+            queryUri,
+            OPENABLE_METADATA_PROJECTION,
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) {
+                return null
+            }
+
+            val displayName = cursor.readNullableString(OpenableColumns.DISPLAY_NAME)
+                ?.trim()
+                ?.takeIf(String::isNotEmpty)
+            val size = cursor.readNullableLong(OpenableColumns.SIZE)
+            UriMetadata(
+                displayName = displayName,
+                size = size,
+            )
+        }
+    } catch (_: SecurityException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    }
+
+    private fun chooseDisplayName(
+        uri: Uri,
+        openableDisplayName: String?,
+    ): String? {
+        if (!uri.isPhotoPickerUri()) {
+            return openableDisplayName
+        }
+
+        if (openableDisplayName != null && !isSyntheticPhotoPickerDisplayName(openableDisplayName)) {
+            return openableDisplayName
+        }
+
+        return queryPhotoPickerMediaStoreDisplayName(uri)
+    }
+
+    private fun queryPhotoPickerMediaStoreDisplayName(uri: Uri): String? {
+        val mediaId = uri.extractPhotoPickerMediaId() ?: return null
+        val selection = "${MediaStore.MediaColumns._ID}=?"
+        val selectionArgs = arrayOf(mediaId.toString())
+        val resolver = FileKit.context.contentResolver
+
+        for (collectionUri in mediaStoreCollectionsForPhotoPicker()) {
+            val displayName = try {
+                resolver.query(
+                    collectionUri,
+                    MEDIASTORE_DISPLAY_NAME_PROJECTION,
+                    selection,
+                    selectionArgs,
+                    null,
+                )?.use { cursor ->
+                    if (!cursor.moveToFirst()) {
+                        null
+                    } else {
+                        cursor.readNullableString(MediaStore.MediaColumns.DISPLAY_NAME)
+                            ?.trim()
+                            ?.takeIf(String::isNotEmpty)
+                    }
+                }
+            } catch (_: SecurityException) {
+                null
+            } catch (_: IllegalArgumentException) {
+                null
+            }
+
+            if (displayName != null) {
+                return displayName
+            }
+        }
+
+        return null
+    }
+
+    private fun mediaStoreCollectionsForPhotoPicker(): List<Uri> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        listOf(
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL),
+            MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+        ).distinctBy(Uri::toString)
+    } else {
+        listOf(
+            MediaStore.Files.getContentUri("external"),
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+        )
+    }
+
+    private fun fallbackDisplayName(uri: Uri): String = when {
+        uri.isPhotoPickerUri() -> {
+            val providerName = uri.photoPickerProviderName()
+            val uniqueSuffix = uri.extractPhotoPickerMediaId()?.toString()
+                ?: uri.lastPathSegment
+
+            when {
+                providerName != null && uniqueSuffix != null -> "$providerName-$uniqueSuffix"
+                providerName != null -> providerName
+                uniqueSuffix != null -> uniqueSuffix
+                else -> ""
+            }
+        }
+
+        else -> uri.lastPathSegment ?: ""
+    }
+
+    private fun isSyntheticPhotoPickerDisplayName(displayName: String): Boolean =
+        SYNTHETIC_PHOTO_PICKER_NAME_REGEX.matches(displayName)
+
+    private fun Uri.extractPhotoPickerMediaId(): Long? {
+        lastPathSegment?.toLongOrNull()?.let { return it }
+
+        val documentId = runCatching { DocumentsContract.getDocumentId(this) }.getOrNull()
+            ?: runCatching { DocumentsContract.getTreeDocumentId(this) }.getOrNull()
+            ?: return null
+
+        return documentId.substringAfterLast(':').toLongOrNull()
+    }
+
+    private fun Uri.isPhotoPickerUri(): Boolean {
+        if (!scheme.equals("content", ignoreCase = true)) {
+            return false
+        }
+
+        val segments = pathSegments
+        val hasPickerPath = segments.contains("picker") || segments.contains("photopicker")
+        return when (authority) {
+            PHOTO_PICKER_MEDIA_AUTHORITY -> hasPickerPath
+            PHOTO_PICKER_PROVIDER_AUTHORITY -> true
+            else -> false
         }
     }
-}
 
-private fun getUriFileName(uri: Uri): String {
-    val queryUri = uri.toDocumentUriForMetadata()
-    return FileKit.context.contentResolver.query(queryUri, null, null, null, null)?.use { cursor ->
-        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        if (nameIndex == -1 || !cursor.moveToFirst() || cursor.isNull(nameIndex)) {
+    private fun Uri.photoPickerProviderName(): String? {
+        val segments = pathSegments
+        val pickerIndex = segments.indexOf("picker")
+        val providerSegment = if (pickerIndex == -1) {
             null
         } else {
-            cursor.getString(nameIndex)
+            segments.getOrNull(pickerIndex + 2)
         }
-    } ?: uri.lastPathSegment ?: "" // Fallback to the Uri's last path segment
+
+        return providerSegment
+            ?.substringAfterLast('.')
+            ?.takeIf(String::isNotBlank)
+            ?: authority
+                ?.substringAfterLast('.')
+                ?.takeIf(String::isNotBlank)
+    }
+
+    private fun android.database.Cursor.readNullableString(columnName: String): String? {
+        val index = getColumnIndex(columnName)
+        return if (index == -1 || isNull(index)) {
+            null
+        } else {
+            getString(index)
+        }
+    }
+
+    private fun android.database.Cursor.readNullableLong(columnName: String): Long? {
+        val index = getColumnIndex(columnName)
+        return if (index == -1 || isNull(index)) {
+            null
+        } else {
+            getLong(index)
+        }
+    }
+
+    private data class UriMetadata(
+        val displayName: String?,
+        val size: Long?,
+    ) {
+        companion object {
+            val empty = UriMetadata(displayName = null, size = null)
+        }
+    }
+
+    private val OPENABLE_METADATA_PROJECTION = arrayOf(
+        OpenableColumns.DISPLAY_NAME,
+        OpenableColumns.SIZE,
+    )
+    private val MEDIASTORE_DISPLAY_NAME_PROJECTION = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)
+    private val SYNTHETIC_PHOTO_PICKER_NAME_REGEX = Regex("^\\d+(?:\\.[A-Za-z0-9]+)?$")
+    private const val PHOTO_PICKER_MEDIA_AUTHORITY = "media"
+    private const val PHOTO_PICKER_PROVIDER_AUTHORITY = "com.android.providers.media.photopicker"
 }
 
 private fun Uri.toDocumentUriForMetadata(): Uri {

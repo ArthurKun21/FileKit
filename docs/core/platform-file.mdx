@@ -104,6 +104,8 @@ val absoluteFile: PlatformFile = file.absoluteFile()
 val mimeType: MimeType? = file.mimeType()
 ```
 
+On Android, `name` is resolved using provider metadata. For Photo Picker URIs, FileKit performs a best-effort lookup of `MediaStore.MediaColumns.DISPLAY_NAME` when providers return synthetic names (for example `18.jpg`), then falls back to a stable provider/URI-derived name if the original filename is not accessible.
+
 ## File operations
 
 `PlatformFile` provides methods for common file operations:
