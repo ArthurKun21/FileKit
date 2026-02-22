@@ -1,9 +1,12 @@
+@file:Suppress("UnusedReceiverParameter")
+
 package io.github.vinceglb.filekit
 
 import androidx.annotation.IntRange
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.toByteArray
 import io.github.vinceglb.filekit.utils.toNSData
+import kotlinx.cinterop.UnsafeNumber
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
@@ -16,6 +19,7 @@ import platform.Foundation.temporaryDirectory
 
 public actual object FileKit
 
+@OptIn(UnsafeNumber::class)
 public actual val FileKit.cacheDir: PlatformFile
     get() = NSFileManager
         .defaultManager
