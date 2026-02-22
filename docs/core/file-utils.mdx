@@ -60,15 +60,25 @@ On JVM and macOS platforms, you must initialize FileKit with an application ID b
 
 ### Additional Directories
 
-On some platforms, FileKit provides additional standard directories:
+On desktop platforms (JVM and macOS), FileKit provides access to common user directories:
 
 ```kotlin
-// macOS and JVM only
-val picturesDir: PlatformFile = FileKit.picturesDir // Maps to user's Pictures directory
+// Typed API
+val downloads: PlatformFile = FileKit.userDirectory(FileKitUserDirectory.Downloads)
+val pictures: PlatformFile = FileKit.userDirectory(FileKitUserDirectory.Pictures)
+val videos: PlatformFile = FileKit.userDirectory(FileKitUserDirectory.Videos)
+val music: PlatformFile = FileKit.userDirectory(FileKitUserDirectory.Music)
+val documents: PlatformFile = FileKit.userDirectory(FileKitUserDirectory.Documents)
 
-// JVM only
-val downloadDir: PlatformFile = FileKit.downloadDir // Maps to user's Downloads directory
+// Convenience wrappers
+val downloadsDir: PlatformFile = FileKit.downloadsDir
+val picturesDir: PlatformFile = FileKit.picturesDir
+val videosDir: PlatformFile = FileKit.videosDir
+val musicDir: PlatformFile = FileKit.musicDir
+val documentsDir: PlatformFile = FileKit.documentsDir
 ```
+
+Use `FileKit.userDirectoryOrNull(...)` when you prefer nullable handling instead of exceptions.
 
 ### Directory Usage Example
 

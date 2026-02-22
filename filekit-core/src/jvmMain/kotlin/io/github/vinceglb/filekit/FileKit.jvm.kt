@@ -127,47 +127,18 @@ public actual val FileKit.databasesDir: PlatformFile
 public actual val FileKit.projectDir: PlatformFile
     get() = PlatformFile(".")
 
-/**
- * Returns the downloads directory for the current user.
- */
-@Suppress("UnusedReceiverParameter")
-public val FileKit.downloadDir: PlatformFile
-    get() = when (PlatformUtil.current) {
-        Platform.Linux -> System.getenv("XDG_DOWNLOAD_DIR")?.toPath()
-            ?: (getEnv("HOME").toPath() / "Downloads")
+internal actual fun FileKit.platformUserDirectoryOrNull(type: FileKitUserDirectory): PlatformFile? {
+    val path = resolveJvmUserDirectoryPath(
+        type = type,
+        platform = PlatformUtil.current,
+        envProvider = System::getenv,
+        linuxUserDirsConfigProvider = { defaultLinuxUserDirsConfig(System::getenv) },
+        windowsKnownFolderResolver = ::resolveKnownFolderPath,
+    ) ?: return null
 
-        Platform.MacOS -> getEnv("HOME").toPath() / "Downloads"
-
-        Platform.Windows -> getEnv("USERPROFILE").toPath() / "Downloads"
-    }.also(Path::assertExists).let(::PlatformFile)
-
-/**
- * Returns the pictures directory for the current user.
- */
-@Suppress("UnusedReceiverParameter")
-public val FileKit.pictureDir: PlatformFile
-    get() = when (PlatformUtil.current) {
-        Platform.Linux -> System.getenv("XDG_PICTURES_DIR")?.toPath()
-            ?: (getEnv("HOME").toPath() / "Pictures")
-
-        Platform.MacOS -> getEnv("HOME").toPath() / "Pictures"
-
-        Platform.Windows -> getEnv("USERPROFILE").toPath() / "Pictures"
-    }.also(Path::assertExists).let(::PlatformFile)
-
-/**
- * Returns the videos directory for the current user.
- */
-@Suppress("UnusedReceiverParameter")
-public val FileKit.videoDir: PlatformFile
-    get() = when (PlatformUtil.current) {
-        Platform.Linux -> System.getenv("XDG_VIDEOS_DIR")?.toPath()
-            ?: (getEnv("HOME").toPath() / "Videos")
-
-        Platform.MacOS -> getEnv("HOME").toPath() / "Movies"
-
-        Platform.Windows -> getEnv("USERPROFILE").toPath() / "Videos"
-    }.also(Path::assertExists).let(::PlatformFile)
+    path.assertExists()
+    return PlatformFile(path)
+}
 
 private fun getEnv(key: String): String = System.getenv(key)
     ?: throw IllegalStateException("Environment variable $key not found.")
@@ -244,12 +215,12 @@ public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
 ) {
-    FileKit.pictureDir / filename write bytes
+    FileKit.picturesDir / filename write bytes
 }
 
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
 ) {
-    FileKit.videoDir / filename write file
+    FileKit.videosDir / filename write file
 }

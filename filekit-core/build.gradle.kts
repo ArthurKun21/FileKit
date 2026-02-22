@@ -6,7 +6,10 @@ plugins {
 
 kotlin {
     sourceSets {
+        val desktopMain by creating { dependsOn(nonWebMain.get()) }
         val jvmAndNativeMain by creating { dependsOn(nonWebMain.get()) }
+        jvmMain.get().dependsOn(desktopMain)
+        macosMain.get().dependsOn(desktopMain)
         jvmMain.get().dependsOn(jvmAndNativeMain)
         nativeMain.get().dependsOn(jvmAndNativeMain)
 
@@ -30,6 +33,10 @@ kotlin {
 
         wasmJsMain.dependencies {
             implementation(libs.kotlinx.browser)
+        }
+
+        jvmMain.dependencies {
+            implementation(libs.jna.platform)
         }
 
         androidHostTest.dependencies {
