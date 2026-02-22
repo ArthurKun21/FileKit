@@ -11,6 +11,7 @@ import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.exceptions.FileKitUriPathNotSupportedException
@@ -21,6 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowContentResolver
 import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -36,10 +38,14 @@ import kotlin.test.assertTrue
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class PlatformFileAndroidTest {
+    private var retainedContext: Context? = null
+
     @Before
     fun setup() {
+        ShadowContentResolver.reset()
         // Initialize FileKit with Robolectric's application context
-        FileKit.manualFileKitCoreInitialization(RuntimeEnvironment.getApplication())
+        retainedContext = RuntimeEnvironment.getApplication()
+        FileKit.manualFileKitCoreInitialization(requireNotNull(retainedContext))
     }
 
     private fun initializeFileKitWithResolver(resolver: ContentResolver) {
@@ -47,7 +53,8 @@ class PlatformFileAndroidTest {
         val wrappedContext = object : ContextWrapper(appContext) {
             override fun getContentResolver(): ContentResolver = resolver
         }
-        FileKit.manualFileKitCoreInitialization(wrappedContext)
+        retainedContext = wrappedContext
+        FileKit.manualFileKitCoreInitialization(requireNotNull(retainedContext))
     }
 
     private val resourceDirectory = FileKit.projectDir / "src/nonWebTest/resources"
@@ -185,6 +192,51 @@ class PlatformFileAndroidTest {
             }
         }
     }
+
+    @Test
+    fun PlatformFile_name_photoPickerNumericName_resolvesFromMediaStore() {
+        val pickerUri = Uri.parse("content://media/picker/0/com.android.providers.media.photopicker/media/18")
+        val provider = PhotoPickerNameContentProvider(
+            pickerUri = pickerUri,
+            pickerDisplayName = "18.jpg",
+            mediaStoreDisplayName = "IMG_20251220_235914.jpg",
+        )
+        ShadowContentResolver.registerProviderInternal("media", provider)
+
+        val file = PlatformFile(pickerUri)
+        assertEquals(expected = "IMG_20251220_235914.jpg", actual = file.name)
+        assertEquals(expected = "jpg", actual = file.extension)
+        assertEquals(expected = "IMG_20251220_235914", actual = file.nameWithoutExtension)
+    }
+
+    @Test
+    fun PlatformFile_name_photoPickerMediaStoreLookupFails_usesStableFallback() {
+        val pickerUri = Uri.parse("content://media/picker/0/com.android.providers.media.photopicker/media/18")
+        val provider = PhotoPickerNameContentProvider(
+            pickerUri = pickerUri,
+            pickerDisplayName = "18.jpg",
+            mediaStoreDisplayName = null,
+            throwOnMediaStoreQuery = true,
+        )
+        ShadowContentResolver.registerProviderInternal("media", provider)
+
+        val file = PlatformFile(pickerUri)
+        assertEquals(expected = "photopicker", actual = file.name)
+        assertEquals(expected = "", actual = file.extension)
+        assertEquals(expected = "", actual = file.nameWithoutExtension)
+    }
+
+    @Test
+    fun PlatformFile_name_nonPickerUri_keepsLastPathSegmentFallback() {
+        initializeFileKitWithResolver(ContentResolver.wrap(NullInsertContentProvider()))
+
+        val uri = Uri.parse("content://com.example.documents/files/report.pdf")
+        val file = PlatformFile(uri)
+
+        assertEquals(expected = "report.pdf", actual = file.name)
+        assertEquals(expected = "pdf", actual = file.extension)
+        assertEquals(expected = "report", actual = file.nameWithoutExtension)
+    }
 }
 
 private class NullInsertContentProvider : ContentProvider() {
@@ -299,4 +351,69 @@ private class MissingSizeContentProvider(
             throw FileNotFoundException("Unsupported mode: $this")
         }
     }
+}
+
+private class PhotoPickerNameContentProvider(
+    private val pickerUri: Uri,
+    private val pickerDisplayName: String,
+    private val mediaStoreDisplayName: String?,
+    private val throwOnMediaStoreQuery: Boolean = false,
+) : ContentProvider() {
+
+    override fun onCreate(): Boolean = true
+
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?,
+    ): Cursor {
+        return when {
+            uri == pickerUri -> {
+                MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)).apply {
+                    addRow(arrayOf(pickerDisplayName, null))
+                }
+            }
+
+            uri.isMediaStoreLookupUri() -> {
+                if (throwOnMediaStoreQuery) {
+                    throw SecurityException("MediaStore lookup not allowed")
+                }
+
+                val requestedId = selectionArgs?.firstOrNull()?.toLongOrNull()
+                val pickerId = pickerUri.lastPathSegment?.toLongOrNull()
+                MatrixCursor(arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)).apply {
+                    if (requestedId != null && requestedId == pickerId && mediaStoreDisplayName != null) {
+                        addRow(arrayOf(mediaStoreDisplayName))
+                    }
+                }
+            }
+
+            else -> {
+                MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME))
+            }
+        }
+    }
+
+    override fun getType(uri: Uri): String? = null
+
+    override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = 0
+}
+
+private fun Uri.isMediaStoreLookupUri(): Boolean {
+    if (authority != "media") {
+        return false
+    }
+    val segments = pathSegments
+    return segments.isNotEmpty() && segments[0].startsWith("external")
 }
