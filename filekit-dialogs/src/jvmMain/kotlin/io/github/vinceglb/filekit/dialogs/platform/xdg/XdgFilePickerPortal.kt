@@ -23,8 +23,10 @@ import org.freedesktop.dbus.types.UInt32
 import org.freedesktop.dbus.types.Variant
 import java.awt.Window
 import java.io.File
+import java.lang.reflect.InvocationTargetException
 import java.net.URI
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 // https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.FileChooser.html
 internal class XdgFilePickerPortal : PlatformFilePicker {
@@ -149,17 +151,26 @@ internal class XdgFilePickerPortal : PlatformFilePicker {
 
         val result = CompletableDeferred<List<URI>?>()
         val matchRule = DBusMatchRule("signal", "org.freedesktop.portal.Request", "Response")
-        val handler = ResponseHandler(path) { uris, handler ->
-            connection.removeGenericSigHandler(matchRule, handler)
+        val registration = AtomicReference<AutoCloseable?>(null)
+        val handler = ResponseHandler(path) { uris ->
             result.complete(uris)
         }
-        connection.addGenericSigHandler(matchRule, handler)
+        registration.set(
+            addGenericSigHandlerCompat(
+                connection = connection,
+                matchRule = matchRule,
+                handler = handler,
+            ),
+        )
+        result.invokeOnCompletion {
+            registration.getAndSet(null).safeClose()
+        }
         return result
     }
 
     private class ResponseHandler(
         private val path: String,
-        private val onComplete: (result: List<URI>?, thisHandler: ResponseHandler) -> Unit,
+        private val onComplete: (result: List<URI>?) -> Unit,
     ) : DBusSigHandler<DBusSignal> {
         @Suppress("UNCHECKED_CAST")
         override fun handle(signal: DBusSignal) {
@@ -172,11 +183,45 @@ internal class XdgFilePickerPortal : PlatformFilePicker {
                     val uris = (results["uris"]!!.value as List<String>).map { path ->
                         path.toURI()
                     }
-                    onComplete(uris, this)
+                    onComplete(uris)
                 } else {
-                    onComplete(null, this)
+                    onComplete(null)
                 }
             }
+        }
+    }
+
+    private fun addGenericSigHandlerCompat(
+        connection: DBusConnection,
+        matchRule: DBusMatchRule,
+        handler: DBusSigHandler<DBusSignal>,
+    ): AutoCloseable {
+        val method = connection.javaClass.methods.firstOrNull { candidate ->
+            candidate.name == "addGenericSigHandler" &&
+                candidate.parameterTypes.size == 2 &&
+                candidate.parameterTypes[0].isAssignableFrom(matchRule.javaClass) &&
+                candidate.parameterTypes[1].isAssignableFrom(handler.javaClass)
+        } ?: connection.javaClass.methods.firstOrNull { candidate ->
+            candidate.name == "addSigHandler" &&
+                candidate.parameterTypes.size == 2 &&
+                candidate.parameterTypes[0].isAssignableFrom(matchRule.javaClass) &&
+                candidate.parameterTypes[1].isAssignableFrom(handler.javaClass)
+        } ?: error("No compatible DBusConnection signal-registration method found")
+
+        try {
+            val registration = method.invoke(connection, matchRule, handler)
+            return registration as? AutoCloseable
+                ?: error("DBusConnection signal-registration method did not return AutoCloseable")
+        } catch (error: InvocationTargetException) {
+            throw error.targetException
+        }
+    }
+
+    private fun AutoCloseable?.safeClose() {
+        try {
+            this?.close()
+        } catch (_: Exception) {
+            // Signal handler may already be removed; ignore cleanup failures.
         }
     }
 
