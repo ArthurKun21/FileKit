@@ -22,8 +22,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.shadows.ShadowContentResolver
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowContentResolver
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
@@ -394,31 +394,29 @@ private class PhotoPickerNameContentProvider(
         selection: String?,
         selectionArgs: Array<out String>?,
         sortOrder: String?,
-    ): Cursor {
-        return when {
-            pickerDisplayNamesByUri.containsKey(uri) -> {
-                MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)).apply {
-                    addRow(arrayOf(pickerDisplayNamesByUri.getValue(uri), null))
-                }
+    ): Cursor = when {
+        pickerDisplayNamesByUri.containsKey(uri) -> {
+            MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)).apply {
+                addRow(arrayOf(pickerDisplayNamesByUri.getValue(uri), null))
+            }
+        }
+
+        uri.isMediaStoreLookupUri() -> {
+            if (throwOnMediaStoreQuery) {
+                throw SecurityException("MediaStore lookup not allowed")
             }
 
-            uri.isMediaStoreLookupUri() -> {
-                if (throwOnMediaStoreQuery) {
-                    throw SecurityException("MediaStore lookup not allowed")
-                }
-
-                val requestedId = selectionArgs?.firstOrNull()?.toLongOrNull()
-                val pickerIds = pickerDisplayNamesByUri.keys.mapNotNull { it.lastPathSegment?.toLongOrNull() }
-                MatrixCursor(arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)).apply {
-                    if (requestedId != null && requestedId in pickerIds && mediaStoreDisplayName != null) {
-                        addRow(arrayOf(mediaStoreDisplayName))
-                    }
+            val requestedId = selectionArgs?.firstOrNull()?.toLongOrNull()
+            val pickerIds = pickerDisplayNamesByUri.keys.mapNotNull { it.lastPathSegment?.toLongOrNull() }
+            MatrixCursor(arrayOf(MediaStore.MediaColumns.DISPLAY_NAME)).apply {
+                if (requestedId != null && requestedId in pickerIds && mediaStoreDisplayName != null) {
+                    addRow(arrayOf(mediaStoreDisplayName))
                 }
             }
+        }
 
-            else -> {
-                MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME))
-            }
+        else -> {
+            MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME))
         }
     }
 

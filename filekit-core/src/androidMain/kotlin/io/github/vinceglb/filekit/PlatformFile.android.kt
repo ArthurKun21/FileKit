@@ -602,26 +602,28 @@ private object UriMetadataResolver {
     }
 
     private fun queryOpenableMetadata(queryUri: Uri): UriMetadata? = try {
-        FileKit.context.contentResolver.query(
-            queryUri,
-            OPENABLE_METADATA_PROJECTION,
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (!cursor.moveToFirst()) {
-                return null
-            }
+        FileKit.context.contentResolver
+            .query(
+                queryUri,
+                OPENABLE_METADATA_PROJECTION,
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) {
+                    return null
+                }
 
-            val displayName = cursor.readNullableString(OpenableColumns.DISPLAY_NAME)
-                ?.trim()
-                ?.takeIf(String::isNotEmpty)
-            val size = cursor.readNullableLong(OpenableColumns.SIZE)
-            UriMetadata(
-                displayName = displayName,
-                size = size,
-            )
-        }
+                val displayName = cursor
+                    .readNullableString(OpenableColumns.DISPLAY_NAME)
+                    ?.trim()
+                    ?.takeIf(String::isNotEmpty)
+                val size = cursor.readNullableLong(OpenableColumns.SIZE)
+                UriMetadata(
+                    displayName = displayName,
+                    size = size,
+                )
+            }
     } catch (_: SecurityException) {
         null
     } catch (_: IllegalArgumentException) {
@@ -651,21 +653,23 @@ private object UriMetadataResolver {
 
         for (collectionUri in mediaStoreCollectionsForPhotoPicker()) {
             val displayName = try {
-                resolver.query(
-                    collectionUri,
-                    MEDIASTORE_DISPLAY_NAME_PROJECTION,
-                    selection,
-                    selectionArgs,
-                    null,
-                )?.use { cursor ->
-                    if (!cursor.moveToFirst()) {
-                        null
-                    } else {
-                        cursor.readNullableString(MediaStore.MediaColumns.DISPLAY_NAME)
-                            ?.trim()
-                            ?.takeIf(String::isNotEmpty)
+                resolver
+                    .query(
+                        collectionUri,
+                        MEDIASTORE_DISPLAY_NAME_PROJECTION,
+                        selection,
+                        selectionArgs,
+                        null,
+                    )?.use { cursor ->
+                        if (!cursor.moveToFirst()) {
+                            null
+                        } else {
+                            cursor
+                                .readNullableString(MediaStore.MediaColumns.DISPLAY_NAME)
+                                ?.trim()
+                                ?.takeIf(String::isNotEmpty)
+                        }
                     }
-                }
             } catch (_: SecurityException) {
                 null
             } catch (_: IllegalArgumentException) {
@@ -711,7 +715,9 @@ private object UriMetadataResolver {
             }
         }
 
-        else -> uri.lastPathSegment ?: ""
+        else -> {
+            uri.lastPathSegment ?: ""
+        }
     }
 
     private fun isSyntheticPhotoPickerDisplayName(displayName: String): Boolean =

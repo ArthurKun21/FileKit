@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:compose:param-order-check")
+
 package io.github.vinceglb.filekit.dialogs.compose
 
 import androidx.compose.runtime.Composable
