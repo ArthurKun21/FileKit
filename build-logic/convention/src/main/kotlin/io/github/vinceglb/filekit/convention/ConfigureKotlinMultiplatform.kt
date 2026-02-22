@@ -42,6 +42,23 @@ internal fun Project.configureKotlinMultiplatform(
         }
     }
 
+    // If one day we need to disable watchOS tests
+    //
+    // if (addWatchosTargets) {
+    //    this@configureKotlinMultiplatform
+    //        .tasks
+    //        .matching { task ->
+    //            task.name.endsWith("WatchosX64Test") ||
+    //                task.name.endsWith("WatchosSimulatorArm64Test") ||
+    //                task.name.endsWith("WatchosArm64Test") ||
+    //                task.name == "watchosX64Test" ||
+    //                task.name == "watchosSimulatorArm64Test" ||
+    //                task.name == "watchosArm64Test"
+    //        }.configureEach {
+    //            enabled = false
+    //        }
+    // }
+
     // Desktop JVM
     jvm()
 
