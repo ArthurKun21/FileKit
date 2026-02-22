@@ -11,6 +11,7 @@ internal fun Project.configureKotlinMultiplatform(
     modulePackage: String,
     moduleName: String,
     addMacosTargets: Boolean,
+    addWatchosTargets: Boolean,
 ) = extension.apply {
     // Force visibility of public API
     explicitApi()
@@ -23,20 +24,40 @@ internal fun Project.configureKotlinMultiplatform(
         configureKotlinMultiplatformAndroidLibrary(this, modulePackage = modulePackage)
     }
 
-    // iOS / macOS
+    // Apple targets
     listOfNotNull(
         iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
         if (addMacosTargets) macosX64() else null,
         if (addMacosTargets) macosArm64() else null,
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+        if (addWatchosTargets) watchosX64() else null,
+        if (addWatchosTargets) watchosArm64() else null,
+        if (addWatchosTargets) watchosSimulatorArm64() else null,
+    ).forEach { appleTarget ->
+        appleTarget.binaries.framework {
             isStatic = true
             baseName = "${moduleName}Kit"
             binaryOption("bundleId", modulePackage)
         }
     }
+
+    // If one day we need to disable watchOS tests
+    //
+    // if (addWatchosTargets) {
+    //    this@configureKotlinMultiplatform
+    //        .tasks
+    //        .matching { task ->
+    //            task.name.endsWith("WatchosX64Test") ||
+    //                task.name.endsWith("WatchosSimulatorArm64Test") ||
+    //                task.name.endsWith("WatchosArm64Test") ||
+    //                task.name == "watchosX64Test" ||
+    //                task.name == "watchosSimulatorArm64Test" ||
+    //                task.name == "watchosArm64Test"
+    //        }.configureEach {
+    //            enabled = false
+    //        }
+    // }
 
     // Desktop JVM
     jvm()
@@ -75,10 +96,16 @@ internal fun Project.configureKotlinMultiplatform(
         create("mobileMain") { dependsOn(getByName("nonWebMain")) }
         iosMain.get().dependsOn(getByName("mobileMain"))
         androidMain.get().dependsOn(getByName("mobileMain"))
+        if (addWatchosTargets) {
+            watchosMain.get().dependsOn(getByName("mobileMain"))
+        }
 
         create("mobileTest") { dependsOn(getByName("nonWebTest")) }
         getByName("androidHostTest").dependsOn(getByName("mobileTest"))
         iosTest.get().dependsOn(getByName("mobileTest"))
+        if (addWatchosTargets) {
+            watchosTest.get().dependsOn(getByName("mobileTest"))
+        }
 
         commonTest.dependencies {
             implementation(libs.findLibrary("kotlin.test").get())

@@ -25,6 +25,7 @@ class KotlinMultiplatformLibraryConventionPlugin : Plugin<Project> {
                     modulePackage = modulePackage,
                     moduleName = moduleName,
                     addMacosTargets = true,
+                    addWatchosTargets = path == ":filekit-core",
                 )
             }
         }

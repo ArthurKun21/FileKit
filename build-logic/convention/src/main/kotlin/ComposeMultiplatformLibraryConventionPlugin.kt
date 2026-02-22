@@ -28,6 +28,7 @@ class ComposeMultiplatformLibraryConventionPlugin : Plugin<Project> {
                     modulePackage = modulePackage,
                     moduleName = moduleName,
                     addMacosTargets = false,
+                    addWatchosTargets = false,
                 )
                 configureComposeMultiplatform(this)
             }
