@@ -42,7 +42,7 @@ class FileKitUserDirectoriesJvmTest {
             windowsKnownFolderResolver = { null },
         )
 
-        assertEquals("/mnt/media/music", resolved?.toString())
+        assertEquals("/mnt/media/music", resolved.normalizedPathString())
     }
 
     @Test
@@ -57,7 +57,7 @@ class FileKitUserDirectoriesJvmTest {
             windowsKnownFolderResolver = { null },
         )
 
-        assertEquals("/home/alice/dl", resolved?.toString())
+        assertEquals("/home/alice/dl", resolved.normalizedPathString())
     }
 
     @Test
@@ -72,7 +72,7 @@ class FileKitUserDirectoriesJvmTest {
             windowsKnownFolderResolver = { null },
         )
 
-        assertEquals("/home/alice/Documents", resolved?.toString())
+        assertEquals("/home/alice/Documents", resolved.normalizedPathString())
     }
 
     @Test
@@ -87,7 +87,7 @@ class FileKitUserDirectoriesJvmTest {
             windowsKnownFolderResolver = { "/resolved/documents" },
         )
 
-        assertEquals("/resolved/documents", resolved?.toString())
+        assertEquals("/resolved/documents", resolved.normalizedPathString())
     }
 
     @Test
@@ -102,7 +102,7 @@ class FileKitUserDirectoriesJvmTest {
             windowsKnownFolderResolver = { null },
         )
 
-        assertEquals("/users/alice/Videos", resolved?.toString())
+        assertEquals("/users/alice/Videos", resolved.normalizedPathString())
     }
 
     @Test
@@ -206,3 +206,7 @@ class FileKitUserDirectoriesJvmTest {
         }
     }
 }
+
+private fun Any?.normalizedPathString(): String? = this
+    ?.toString()
+    ?.replace('\\', '/')
