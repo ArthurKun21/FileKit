@@ -33,6 +33,7 @@ internal fun Project.configureKotlinMultiplatform(
         if (addMacosTargets) macosArm64() else null,
         if (addWatchosTargets) watchosX64() else null,
         if (addWatchosTargets) watchosArm64() else null,
+        if (addWatchosTargets) watchosDeviceArm64() else null,
         if (addWatchosTargets) watchosSimulatorArm64() else null,
     ).forEach { appleTarget ->
         appleTarget.binaries.framework {
