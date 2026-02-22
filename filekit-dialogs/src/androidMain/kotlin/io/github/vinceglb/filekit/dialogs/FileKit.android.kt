@@ -27,6 +27,7 @@ import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.lang.ref.WeakReference
 import java.util.UUID
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -393,13 +394,13 @@ private fun getMimeType(fileExtension: String?): String {
 }
 
 internal object FileKitDialog {
-    private var _registry: ActivityResultRegistry? = null
+    private var _registry: WeakReference<ActivityResultRegistry?> = WeakReference(null)
     val registry: ActivityResultRegistry
-        get() = _registry
+        get() = _registry.get()
             ?: throw FileKitNotInitializedException()
 
     fun init(registry: ActivityResultRegistry) {
-        _registry = registry
+        _registry = WeakReference(registry)
     }
 }
 
