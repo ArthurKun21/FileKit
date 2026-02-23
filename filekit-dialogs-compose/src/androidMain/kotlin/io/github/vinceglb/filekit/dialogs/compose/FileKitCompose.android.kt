@@ -332,11 +332,15 @@ internal fun shouldUseSingleVisualLauncher(
 ): Boolean = when (modeId) {
     PICKER_MODE_SINGLE,
     PICKER_MODE_SINGLE_WITH_STATE,
-    -> true
+    -> {
+        true
+    }
 
     PICKER_MODE_MULTIPLE,
     PICKER_MODE_MULTIPLE_WITH_STATE,
-    -> maxItems == 1
+    -> {
+        maxItems == 1
+    }
 
     else -> {
         false
