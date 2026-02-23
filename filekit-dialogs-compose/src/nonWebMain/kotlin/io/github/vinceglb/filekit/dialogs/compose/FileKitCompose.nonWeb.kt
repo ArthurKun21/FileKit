@@ -1,15 +1,8 @@
 package io.github.vinceglb.filekit.dialogs.compose
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
-import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
-import io.github.vinceglb.filekit.dialogs.openFileSaver
-import kotlinx.coroutines.launch
 
 /**
  * Creates and remembers a [PickerResultLauncher] for picking a directory.
@@ -40,27 +33,14 @@ public fun rememberFileSaverLauncher(
 ): SaverResultLauncher {
     // Init FileKit
     InitFileKit()
-
-    // Coroutine
-    val coroutineScope = rememberCoroutineScope()
-
-    // Updated state
-    val currentOnResult by rememberUpdatedState(onResult)
-
-    // FileKit launcher
-    val returnedLauncher = remember {
-        SaverResultLauncher { suggestedName, extension, directory ->
-            coroutineScope.launch {
-                val result = FileKit.openFileSaver(
-                    suggestedName = suggestedName,
-                    extension = extension,
-                    directory = directory,
-                    dialogSettings = dialogSettings,
-                )
-                currentOnResult(result)
-            }
-        }
-    }
-
-    return returnedLauncher
+    return rememberPlatformFileSaverLauncher(
+        dialogSettings = dialogSettings,
+        onResult = onResult,
+    )
 }
+
+@Composable
+internal expect fun rememberPlatformFileSaverLauncher(
+    dialogSettings: FileKitDialogSettings,
+    onResult: (PlatformFile?) -> Unit,
+): SaverResultLauncher
