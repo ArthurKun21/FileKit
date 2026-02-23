@@ -11,6 +11,7 @@ import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import io.github.vinceglb.filekit.exceptions.FileKitException
@@ -258,6 +259,33 @@ class PlatformFileAndroidTest {
         assertEquals(expected = "pdf", actual = file.extension)
         assertEquals(expected = "report", actual = file.nameWithoutExtension)
     }
+
+    @Test
+    @Config(sdk = [23])
+    fun PlatformFile_exists_bookmarkedTreeUriOnApi23_returnsTrue() {
+        val treeUri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3ADocuments")
+        ShadowContentResolver.registerProviderInternal(
+            "com.android.externalstorage.documents",
+            TreeBookmarkContentProvider(),
+        )
+
+        val file = PlatformFile(treeUri)
+        assertTrue(file.exists())
+    }
+
+    @Test
+    @Config(sdk = [23])
+    fun PlatformFile_fromBookmarkData_bookmarkedTreeUriOnApi23_restoresAccessibleFile() {
+        val treeUri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3ADocuments")
+        ShadowContentResolver.registerProviderInternal(
+            "com.android.externalstorage.documents",
+            TreeBookmarkContentProvider(),
+        )
+
+        val restored = PlatformFile.fromBookmarkData(BookmarkData(treeUri.toString().encodeToByteArray()))
+        assertEquals(expected = treeUri.toString(), actual = restored.path)
+        assertTrue(restored.exists())
+    }
 }
 
 private class NullInsertContentProvider : ContentProvider() {
@@ -440,4 +468,54 @@ private fun Uri.isMediaStoreLookupUri(): Boolean {
     }
     val segments = pathSegments
     return segments.isNotEmpty() && segments[0].startsWith("external")
+}
+
+private class TreeBookmarkContentProvider : ContentProvider() {
+    override fun onCreate(): Boolean = true
+
+    override fun query(
+        uri: Uri,
+        projection: Array<out String>?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+        sortOrder: String?,
+    ): Cursor {
+        val columns = projection?.toList()?.toTypedArray()
+            ?: arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                OpenableColumns.SIZE,
+            )
+
+        val cursor = MatrixCursor(columns)
+        val isDocumentUri = uri.path?.contains("/document/") == true
+        if (isDocumentUri) {
+            val row = columns
+                .map { column ->
+                    when (column) {
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID -> "primary:Documents"
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME -> "Documents"
+                        DocumentsContract.Document.COLUMN_MIME_TYPE -> DocumentsContract.Document.MIME_TYPE_DIR
+                        OpenableColumns.SIZE -> null
+                        else -> null
+                    }
+                }.toTypedArray()
+            cursor.addRow(row)
+        }
+        return cursor
+    }
+
+    override fun getType(uri: Uri): String? = null
+
+    override fun insert(uri: Uri, values: ContentValues?): Uri? = null
+
+    override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = 0
+
+    override fun update(
+        uri: Uri,
+        values: ContentValues?,
+        selection: String?,
+        selectionArgs: Array<out String>?,
+    ): Int = 0
 }
