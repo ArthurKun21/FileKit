@@ -491,15 +491,16 @@ private class TreeBookmarkContentProvider : ContentProvider() {
         val cursor = MatrixCursor(columns)
         val isDocumentUri = uri.path?.contains("/document/") == true
         if (isDocumentUri) {
-            val row = columns.map { column ->
-                when (column) {
-                    DocumentsContract.Document.COLUMN_DOCUMENT_ID -> "primary:Documents"
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME -> "Documents"
-                    DocumentsContract.Document.COLUMN_MIME_TYPE -> DocumentsContract.Document.MIME_TYPE_DIR
-                    OpenableColumns.SIZE -> null
-                    else -> null
-                }
-            }.toTypedArray()
+            val row = columns
+                .map { column ->
+                    when (column) {
+                        DocumentsContract.Document.COLUMN_DOCUMENT_ID -> "primary:Documents"
+                        DocumentsContract.Document.COLUMN_DISPLAY_NAME -> "Documents"
+                        DocumentsContract.Document.COLUMN_MIME_TYPE -> DocumentsContract.Document.MIME_TYPE_DIR
+                        OpenableColumns.SIZE -> null
+                        else -> null
+                    }
+                }.toTypedArray()
             cursor.addRow(row)
         }
         return cursor
