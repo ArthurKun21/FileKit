@@ -43,6 +43,11 @@ FileKit is trusted by developers building amazing cross-platform applications:
 - **[Ashampoo Photo Organizer](https://www.ashampoo.com/en-us/photo-organizer)** - Photo management software for organizing and searching large photo collections
 - **[AB Download Manager](https://github.com/amir1376/ab-download-manager/)** - A Download Manager that speeds up your downloads
 - **[Edconv](https://github.com/edneyosf/Edconv)** - A user-friendly interface that simplifies the power of FFmpeg. It's designed for fast and efficient conversion of video and audio files.
+- **[Gluky](https://github.com/N7ghtm4r3/Gluky)**, **[Refy](https://github.com/N7ghtm4r3/Refy)**, **[Pandoro](https://github.com/N7ghtm4r3/Pandoro)**, **[Neutron](https://github.com/N7ghtm4r3/Neutron)**, and **[Brownie](https://github.com/N7ghtm4r3/Brownie)** - Self-hosted applications using FileKit for profile pictures and file uploads
+- **[Keyguard](https://github.com/AChep/keyguard-app)** - Alternative client for the Bitwarden platform and KeePass (KDBX)
+- **[HowMarket](https://github.com/dududaa/howmarket)** - Cross-platform Point of Sale (PoS) software for small and growing businesses, using FileKit to upload and manage product and user images
+- **[Authmeister](https://monoroh.com/authmeister)** - Multiplatform OTP authenticator supporting TOTP and HOTP, available on [Android](https://play.google.com/store/apps/details?id=com.kopylovis.authmeister) and [iOS](https://apps.apple.com/us/app/authmeister/id6742833866)
+- **[Dancing Decibels](https://www.dancingdecibels.com)** - Multi-platform app for music festivals and live entertainment experiences, using FileKit for image imports and schedule import/export
 
 *Using FileKit in your project? [Let us know!](https://github.com/vinceglb/FileKit/discussions/343)*
 
