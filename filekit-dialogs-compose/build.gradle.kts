@@ -29,6 +29,10 @@ kotlin {
             implementation(libs.androidx.exifinterface)
         }
 
+        androidHostTest.dependencies {
+            implementation(libs.test.android.robolectric)
+        }
+
         jvmMain.dependencies {
             implementation(libs.compose.ui)
         }

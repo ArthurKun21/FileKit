@@ -9,6 +9,7 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import io.github.vinceglb.filekit.dialogs.openFileSaver
 import kotlinx.coroutines.launch
 
 /**
@@ -49,4 +50,27 @@ public actual fun rememberDirectoryPickerLauncher(
     }
 
     return returnedLauncher
+}
+
+@Composable
+internal actual fun rememberPlatformFileSaverLauncher(
+    dialogSettings: FileKitDialogSettings,
+    onResult: (PlatformFile?) -> Unit,
+): SaverResultLauncher {
+    val coroutineScope = rememberCoroutineScope()
+    val currentOnResult by rememberUpdatedState(onResult)
+
+    return remember {
+        SaverResultLauncher { suggestedName, extension, directory ->
+            coroutineScope.launch {
+                val result = FileKit.openFileSaver(
+                    suggestedName = suggestedName,
+                    extension = extension,
+                    directory = directory,
+                    dialogSettings = dialogSettings,
+                )
+                currentOnResult(result)
+            }
+        }
+    }
 }
