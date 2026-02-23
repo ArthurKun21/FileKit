@@ -1,3 +1,5 @@
+@file:OptIn(FileKitDialogsInternalApi::class)
+
 package io.github.vinceglb.filekit.dialogs
 
 import android.content.ClipData
@@ -7,7 +9,6 @@ import android.content.Intent.ACTION_VIEW
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
 import android.net.Uri
-import android.webkit.MimeTypeMap
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.ActivityResultRegistry
@@ -62,10 +63,10 @@ public actual suspend fun FileKit.openFileSaver(
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? {
     val registry = FileKit.registry
-    val normalizedExtension = normalizeFileSaverExtension(extension)
-    val mimeType = getMimeType(normalizedExtension)
+    val normalizedExtension = FileKitAndroidDialogsInternal.normalizeFileSaverExtension(extension)
+    val mimeType = FileKitAndroidDialogsInternal.getMimeType(normalizedExtension)
     val contract = ActivityResultContracts.CreateDocument(mimeType)
-    val fileName = buildFileSaverSuggestedName(
+    val fileName = FileKitAndroidDialogsInternal.buildFileSaverSuggestedName(
         suggestedName = suggestedName,
         extension = normalizedExtension,
     )
@@ -213,7 +214,7 @@ public actual suspend fun FileKit.shareFile(
 
     val mimeTypes = files
         .map { platformFile ->
-            getMimeType(platformFile.extension)
+            FileKitAndroidDialogsInternal.getMimeType(platformFile.extension)
         }.distinct()
         .let { types ->
             if (types.size == 1) types.first() else "*/*"
@@ -261,7 +262,7 @@ public actual fun FileKit.openFileWithDefaultApplication(
     openFileSettings: FileKitOpenFileSettings,
 ) {
     val uri = file.toAndroidUri(openFileSettings.authority)
-    val mimeType = getMimeType(file.extension)
+    val mimeType = FileKitAndroidDialogsInternal.getMimeType(file.extension)
     val intent = Intent(ACTION_VIEW)
     intent.setDataAndType(uri, mimeType)
     intent.flags = FLAG_GRANT_READ_URI_PERMISSION or FLAG_ACTIVITY_NEW_TASK
@@ -320,7 +321,7 @@ private suspend fun callFilePicker(
                     awaitActivityResult(
                         registry = registry,
                         contract = contract,
-                        input = getMimeTypes(type.extensions),
+                        input = FileKitAndroidDialogsInternal.getMimeTypes(type.extensions),
                     )?.let { listOf(PlatformFile(it)) }
                 }
 
@@ -331,7 +332,7 @@ private suspend fun callFilePicker(
                     awaitActivityResult(
                         registry = registry,
                         contract = contract,
-                        input = getMimeTypes(type.extensions),
+                        input = FileKitAndroidDialogsInternal.getMimeTypes(type.extensions),
                     ).map(::PlatformFile)
                 }
             }
@@ -374,35 +375,6 @@ private suspend fun <I, O> awaitActivityResult(
             }
         }
     }
-}
-
-private fun getMimeTypes(fileExtensions: Set<String>?): Array<String> {
-    val mimeTypeMap = MimeTypeMap.getSingleton()
-    return fileExtensions
-        ?.map {
-            when (it) {
-                "csv" -> listOf(
-                    "text/csv",
-                    "application/csv",
-                    "application/x-csv",
-                    "text/comma-separated-values",
-                    "text/x-comma-separated-values",
-                    "text/x-csv",
-                )
-
-                else -> listOf(mimeTypeMap.getMimeTypeFromExtension(it))
-            }
-        }?.let { res -> res.flatten().mapNotNull { it } }
-        ?.takeIf { it.isNotEmpty() }
-        ?.toTypedArray()
-        ?: arrayOf("*/*")
-}
-
-private fun getMimeType(fileExtension: String?): String {
-    val mimeTypeMap = MimeTypeMap.getSingleton()
-    return fileExtension
-        ?.let { mimeTypeMap.getMimeTypeFromExtension(it) }
-        ?: "*/*"
 }
 
 internal object FileKitDialog {

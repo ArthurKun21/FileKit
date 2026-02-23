@@ -1,9 +1,10 @@
+@file:OptIn(io.github.vinceglb.filekit.dialogs.FileKitDialogsInternalApi::class)
+
 package io.github.vinceglb.filekit.dialogs.compose
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.webkit.MimeTypeMap
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -25,6 +26,7 @@ import androidx.core.net.toUri
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
+import io.github.vinceglb.filekit.dialogs.FileKitAndroidDialogsInternal
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitOpenCameraSettings
 import io.github.vinceglb.filekit.dialogs.FileKitPickerState
@@ -165,7 +167,7 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
                 }
 
                 is FileKitType.File -> {
-                    val mimeTypes = getMimeTypes(pickerType.extensions)
+                    val mimeTypes = FileKitAndroidDialogsInternal.getMimeTypes(pickerType.extensions)
                     when {
                         modeSnapshot.isSingleMode() -> {
                             pendingLauncherId = LAUNCHER_FILE_SINGLE
@@ -240,12 +242,12 @@ internal actual fun rememberPlatformFileSaverLauncher(
 
     return remember(launcher) {
         SaverResultLauncher { suggestedName, extension, directory ->
-            val normalizedExtension = normalizeFileSaverExtensionForCompose(extension)
-            val fileName = buildFileSaverSuggestedNameForCompose(
+            val normalizedExtension = FileKitAndroidDialogsInternal.normalizeFileSaverExtension(extension)
+            val fileName = FileKitAndroidDialogsInternal.buildFileSaverSuggestedName(
                 suggestedName = suggestedName,
                 extension = normalizedExtension,
             )
-            val mimeType = getMimeType(normalizedExtension)
+            val mimeType = FileKitAndroidDialogsInternal.getMimeType(normalizedExtension)
 
             hasPendingLaunch = true
             launcher.launch(
@@ -485,50 +487,4 @@ private class CreateDocumentDynamicContract : ActivityResultContract<CreateDocum
         .CreateDocument(
             "*/*",
         ).parseResult(resultCode, intent)
-}
-
-internal fun normalizeFileSaverExtensionForCompose(extension: String?): String? = extension
-    ?.trim()
-    ?.trimStart('.')
-    ?.takeIf { it.isNotBlank() }
-
-internal fun buildFileSaverSuggestedNameForCompose(
-    suggestedName: String,
-    extension: String?,
-): String {
-    val normalizedExtension = normalizeFileSaverExtensionForCompose(extension)
-    return when (normalizedExtension) {
-        null -> suggestedName
-        else -> "$suggestedName.$normalizedExtension"
-    }
-}
-
-private fun getMimeTypes(fileExtensions: Set<String>?): Array<String> {
-    val mimeTypeMap = MimeTypeMap.getSingleton()
-    return fileExtensions
-        ?.map {
-            when (it) {
-                "csv" -> listOf(
-                    "text/csv",
-                    "application/csv",
-                    "application/x-csv",
-                    "text/comma-separated-values",
-                    "text/x-comma-separated-values",
-                    "text/x-csv",
-                )
-
-                else -> listOf(mimeTypeMap.getMimeTypeFromExtension(it))
-            }
-        }?.flatten()
-        ?.mapNotNull { it }
-        ?.takeIf { it.isNotEmpty() }
-        ?.toTypedArray()
-        ?: arrayOf("*/*")
-}
-
-private fun getMimeType(fileExtension: String?): String {
-    val mimeTypeMap = MimeTypeMap.getSingleton()
-    return fileExtension
-        ?.let { mimeTypeMap.getMimeTypeFromExtension(it) }
-        ?: "*/*"
 }

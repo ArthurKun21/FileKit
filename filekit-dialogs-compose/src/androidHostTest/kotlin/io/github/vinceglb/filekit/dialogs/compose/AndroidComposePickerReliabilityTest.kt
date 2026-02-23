@@ -1,9 +1,11 @@
 @file:Suppress("ktlint:standard:function-naming", "TestFunctionName")
+@file:OptIn(io.github.vinceglb.filekit.dialogs.FileKitDialogsInternalApi::class)
 
 package io.github.vinceglb.filekit.dialogs.compose
 
 import android.net.Uri
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.FileKitAndroidDialogsInternal
 import io.github.vinceglb.filekit.dialogs.FileKitPickerState
 import io.github.vinceglb.filekit.path
 import org.junit.runner.RunWith
@@ -133,10 +135,10 @@ class AndroidComposePickerReliabilityTest {
 
     @Test
     fun FileSaverName_normalizesAndBuildsSuggestedName() {
-        assertEquals("pdf", normalizeFileSaverExtensionForCompose(" .pdf "))
+        assertEquals("pdf", FileKitAndroidDialogsInternal.normalizeFileSaverExtension(" .pdf "))
         assertEquals(
             expected = "report.pdf",
-            actual = buildFileSaverSuggestedNameForCompose(
+            actual = FileKitAndroidDialogsInternal.buildFileSaverSuggestedName(
                 suggestedName = "report",
                 extension = " .pdf ",
             ),
