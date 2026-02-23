@@ -30,12 +30,12 @@ public actual val FileKit.projectDir: PlatformFile
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-): Unit = throw FileKitException("saveImageToGallery is not supported on watchOS")
+): Result<Unit> = Result.failure(FileKitException("saveImageToGallery is not supported on watchOS"))
 
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
-): Unit = throw FileKitException("saveVideoToGallery is not supported on watchOS")
+): Result<Unit> = Result.failure(FileKitException("saveVideoToGallery is not supported on watchOS"))
 
 internal actual fun compress(
     nsData: NSData,

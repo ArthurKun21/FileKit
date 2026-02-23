@@ -7,6 +7,7 @@ import io.github.vinceglb.filekit.utils.Platform
 import io.github.vinceglb.filekit.utils.PlatformUtil
 import io.github.vinceglb.filekit.utils.calculateNewDimensions
 import io.github.vinceglb.filekit.utils.div
+import io.github.vinceglb.filekit.utils.runSuspendCatchingFileKit
 import io.github.vinceglb.filekit.utils.toFile
 import io.github.vinceglb.filekit.utils.toKotlinxIoPath
 import io.github.vinceglb.filekit.utils.toPath
@@ -214,13 +215,13 @@ public actual suspend fun FileKit.compressImage(
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-) {
+): Result<Unit> = runSuspendCatchingFileKit {
     FileKit.picturesDir / filename write bytes
 }
 
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
-) {
+): Result<Unit> = runSuspendCatchingFileKit {
     FileKit.videosDir / filename write file
 }

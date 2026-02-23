@@ -2,6 +2,7 @@ package io.github.vinceglb.filekit
 
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.calculateNewDimensions
+import io.github.vinceglb.filekit.utils.runSuspendCatchingFileKit
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.AppKit.NSBitmapImageFileType
@@ -61,12 +62,14 @@ internal actual fun FileKit.platformUserDirectoryOrNull(type: FileKitUserDirecto
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-): Unit = FileKit.picturesDir / filename write bytes
+): Result<Unit> = runSuspendCatchingFileKit {
+    FileKit.picturesDir / filename write bytes
+}
 
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
-) {
+): Result<Unit> = runSuspendCatchingFileKit {
     FileKit.videosDir / filename write file
 }
 

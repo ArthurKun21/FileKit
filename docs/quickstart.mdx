@@ -235,11 +235,15 @@ val compressedBytes = FileKit.compressImage(
 )
 
 // Save to device gallery
-FileKit.saveImageToGallery(
-    fileName = "My Photo",
+val saveResult = FileKit.saveImageToGallery(
+    filename = "my-photo.jpg",
     bytes = compressedBytes,
-    format = ImageFormat.JPEG
 )
+
+saveResult.onFailure { error ->
+    // Handle save failure
+    println("Failed to save image: ${error.message}")
+}
 ```
 
 ## File utilities

@@ -48,7 +48,10 @@ suspend fun saveImageToDeviceGallery() {
     val imageFile = PlatformFile(FileKit.filesDir, "photo.jpg")
 
     // Save to the device's photo gallery
-    FileKit.saveImageToGallery(file = imageFile)
+    val result = FileKit.saveImageToGallery(file = imageFile)
+    result.onFailure { error ->
+        println("Failed to save image: ${error.message}")
+    }
 }
 ```
 
@@ -71,7 +74,10 @@ suspend fun saveVideoToDeviceGallery() {
     val videoFile = PlatformFile(FileKit.filesDir, "movie.mp4")
 
     // Save to the device's video gallery
-    FileKit.saveVideoToGallery(file = videoFile)
+    val result = FileKit.saveVideoToGallery(file = videoFile)
+    result.onFailure { error ->
+        println("Failed to save video: ${error.message}")
+    }
 }
 ```
 

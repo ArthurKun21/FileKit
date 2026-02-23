@@ -2,6 +2,7 @@ package io.github.vinceglb.filekit
 
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.calculateNewDimensions
+import io.github.vinceglb.filekit.utils.runSuspendCatchingFileKit
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -28,7 +29,6 @@ import platform.UIKit.UIGraphicsGetImageFromCurrentImageContext
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
 import platform.UIKit.UIImagePNGRepresentation
-import platform.UIKit.UIImageWriteToSavedPhotosAlbum
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -52,15 +52,17 @@ public actual val FileKit.projectDir: PlatformFile
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-): Unit = withContext(Dispatchers.IO) {
-    val nsData = bytes.usePinned {
-        NSData.create(
-            bytes = it.addressOf(0),
-            length = bytes.size.toULong(),
-        )
+): Result<Unit> = runSuspendCatchingFileKit {
+    withContext(Dispatchers.IO) {
+        val nsData = bytes.usePinned {
+            NSData.create(
+                bytes = it.addressOf(0),
+                length = bytes.size.toULong(),
+            )
+        }
+        val uiImage = UIImage(data = nsData)
+        saveImageToGallery(uiImage)
     }
-    val uiImage = UIImage(nsData)
-    UIImageWriteToSavedPhotosAlbum(uiImage, null, null, null)
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -101,12 +103,34 @@ private fun UIImage.scaleToSize(newWidth: Int, newHeight: Int): UIImage? {
     return resizedImage
 }
 
+private suspend fun saveImageToGallery(image: UIImage): Unit = suspendCancellableCoroutine { continuation ->
+    PHPhotoLibrary.sharedPhotoLibrary().performChanges(
+        changeBlock = {
+            PHAssetChangeRequest.creationRequestForAssetFromImage(image)
+        },
+        completionHandler = completion@{ success, error ->
+            if (!continuation.isActive) {
+                return@completion
+            }
+
+            if (success) {
+                continuation.resume(Unit)
+            } else {
+                val message = error?.localizedDescription ?: "Failed to save image to gallery"
+                continuation.resumeWithException(FileKitException(message))
+            }
+        },
+    )
+}
+
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
-): Unit = withContext(Dispatchers.IO) {
-    file.withScopedAccess {
-        saveVideoToGallery(fileUrl = file.nsUrl)
+): Result<Unit> = runSuspendCatchingFileKit {
+    withContext(Dispatchers.IO) {
+        file.withScopedAccess {
+            saveVideoToGallery(fileUrl = file.nsUrl)
+        }
     }
 }
 
