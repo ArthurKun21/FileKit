@@ -9,4 +9,5 @@ package io.github.vinceglb.filekit.dialogs
     message = "This API is internal to FileKit modules and may change without notice.",
     level = RequiresOptIn.Level.WARNING,
 )
+@Retention(AnnotationRetention.BINARY)
 public annotation class FileKitDialogsInternalApi
