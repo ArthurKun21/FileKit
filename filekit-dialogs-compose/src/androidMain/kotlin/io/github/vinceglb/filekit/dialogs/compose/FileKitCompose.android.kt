@@ -79,23 +79,22 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
     var pendingLauncherId by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun dispatchPendingResult(launcherId: String, files: List<PlatformFile>?) {
-        if (pendingLauncherId != launcherId) return
-
-        val modeId = pendingModeId ?: return
-
-        dispatchPickerConsumedResult(
-            modeId = modeId,
-            maxItems = pendingMaxItems,
+        dispatchPendingPickerResult(
+            expectedLauncherId = launcherId,
+            pendingLauncherId = pendingLauncherId,
+            pendingModeId = pendingModeId,
+            pendingMaxItems = pendingMaxItems,
             files = files,
+            clearPendingState = {
+                pendingModeId = null
+                pendingMaxItems = null
+                pendingLauncherId = null
+            },
             onConsumed = { consumed ->
                 @Suppress("UNCHECKED_CAST")
                 currentOnConsumed(consumed as ConsumedResult)
             },
         )
-
-        pendingModeId = null
-        pendingMaxItems = null
-        pendingLauncherId = null
     }
 
     val visualSingleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -149,7 +148,10 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
                     }
 
                     when {
-                        modeSnapshot.isSingleMode() -> {
+                        shouldUseSingleVisualLauncher(
+                            modeId = modeSnapshot.modeId,
+                            maxItems = modeSnapshot.maxItems,
+                        ) -> {
                             pendingLauncherId = LAUNCHER_VISUAL_SINGLE
                             visualSingleLauncher.launch(request)
                         }
@@ -324,6 +326,23 @@ private data class PendingModeSnapshot(
 private fun PendingModeSnapshot.isSingleMode(): Boolean =
     modeId == PICKER_MODE_SINGLE || modeId == PICKER_MODE_SINGLE_WITH_STATE
 
+internal fun shouldUseSingleVisualLauncher(
+    modeId: String,
+    maxItems: Int?,
+): Boolean = when (modeId) {
+    PICKER_MODE_SINGLE,
+    PICKER_MODE_SINGLE_WITH_STATE,
+    -> true
+
+    PICKER_MODE_MULTIPLE,
+    PICKER_MODE_MULTIPLE_WITH_STATE,
+    -> maxItems == 1
+
+    else -> {
+        false
+    }
+}
+
 private fun <PickerResult, ConsumedResult> FileKitMode<PickerResult, ConsumedResult>.toPendingModeSnapshot(): PendingModeSnapshot =
     when (this) {
         FileKitMode.Single -> PendingModeSnapshot(PICKER_MODE_SINGLE, null)
@@ -331,6 +350,31 @@ private fun <PickerResult, ConsumedResult> FileKitMode<PickerResult, ConsumedRes
         FileKitMode.SingleWithState -> PendingModeSnapshot(PICKER_MODE_SINGLE_WITH_STATE, null)
         is FileKitMode.MultipleWithState -> PendingModeSnapshot(PICKER_MODE_MULTIPLE_WITH_STATE, maxItems)
     }
+
+internal fun dispatchPendingPickerResult(
+    expectedLauncherId: String,
+    pendingLauncherId: String?,
+    pendingModeId: String?,
+    pendingMaxItems: Int?,
+    files: List<PlatformFile>?,
+    clearPendingState: () -> Unit,
+    onConsumed: (Any?) -> Unit,
+) {
+    if (pendingLauncherId != expectedLauncherId) return
+
+    val modeId = pendingModeId ?: return
+    val maxItems = pendingMaxItems
+
+    // Clear stale launch metadata before callbacks to avoid wiping a re-launch made in onConsumed.
+    clearPendingState()
+
+    dispatchPickerConsumedResult(
+        modeId = modeId,
+        maxItems = maxItems,
+        files = files,
+        onConsumed = onConsumed,
+    )
+}
 
 internal fun dispatchPickerConsumedResult(
     modeId: String,
@@ -462,6 +506,7 @@ private data class DynamicPickMultipleVisualMediaInput(
 private class DynamicPickMultipleVisualMediaContract : ActivityResultContract<DynamicPickMultipleVisualMediaInput, List<Uri>>() {
     override fun createIntent(context: Context, input: DynamicPickMultipleVisualMediaInput): Intent {
         val delegate = input.maxItems
+            ?.takeIf { it > 1 }
             ?.let { ActivityResultContracts.PickMultipleVisualMedia(it) }
             ?: ActivityResultContracts.PickMultipleVisualMedia()
         return delegate.createIntent(context, input.request)

@@ -13,8 +13,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -131,6 +133,64 @@ class AndroidComposePickerReliabilityTest {
 
         assertEquals(expected = 1, actual = consumed.size)
         assertIs<FileKitPickerState.Cancelled>(consumed.single())
+    }
+
+    @Test
+    fun VisualLauncher_multipleMaxItemsOne_routesToSingleLauncher() {
+        assertTrue(
+            shouldUseSingleVisualLauncher(
+                modeId = PICKER_MODE_MULTIPLE,
+                maxItems = 1,
+            ),
+        )
+        assertTrue(
+            shouldUseSingleVisualLauncher(
+                modeId = PICKER_MODE_MULTIPLE_WITH_STATE,
+                maxItems = 1,
+            ),
+        )
+        assertFalse(
+            shouldUseSingleVisualLauncher(
+                modeId = PICKER_MODE_MULTIPLE,
+                maxItems = 2,
+            ),
+        )
+    }
+
+    @Test
+    fun PendingDispatch_clearsBeforeCallback_keepsRelaunchState() {
+        var pendingModeId: String? = PICKER_MODE_SINGLE
+        var pendingMaxItems: Int? = null
+        var pendingLauncherId: String? = "initial"
+
+        val consumed = mutableListOf<Any?>()
+
+        dispatchPendingPickerResult(
+            expectedLauncherId = "initial",
+            pendingLauncherId = pendingLauncherId,
+            pendingModeId = pendingModeId,
+            pendingMaxItems = pendingMaxItems,
+            files = listOf(PlatformFile(Uri.parse("content://example.provider/file/1"))),
+            clearPendingState = {
+                pendingModeId = null
+                pendingMaxItems = null
+                pendingLauncherId = null
+            },
+            onConsumed = { result ->
+                consumed += result
+
+                // Simulate a new launch triggered synchronously from onResult callback.
+                pendingModeId = PICKER_MODE_MULTIPLE
+                pendingMaxItems = 3
+                pendingLauncherId = "relaunch"
+            },
+        )
+
+        val singleResult = assertIs<PlatformFile>(consumed.single())
+        assertEquals("content://example.provider/file/1", singleResult.path)
+        assertEquals(PICKER_MODE_MULTIPLE, pendingModeId)
+        assertEquals(3, pendingMaxItems)
+        assertEquals("relaunch", pendingLauncherId)
     }
 
     @Test
