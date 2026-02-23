@@ -25,8 +25,8 @@ import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.core.net.toUri
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.FileKitAndroidDialogsInternal
+import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitOpenCameraSettings
 import io.github.vinceglb.filekit.dialogs.FileKitPickerState
@@ -324,12 +324,13 @@ private data class PendingModeSnapshot(
 private fun PendingModeSnapshot.isSingleMode(): Boolean =
     modeId == PICKER_MODE_SINGLE || modeId == PICKER_MODE_SINGLE_WITH_STATE
 
-private fun <PickerResult, ConsumedResult> FileKitMode<PickerResult, ConsumedResult>.toPendingModeSnapshot(): PendingModeSnapshot = when (this) {
-    FileKitMode.Single -> PendingModeSnapshot(PICKER_MODE_SINGLE, null)
-    is FileKitMode.Multiple -> PendingModeSnapshot(PICKER_MODE_MULTIPLE, maxItems)
-    FileKitMode.SingleWithState -> PendingModeSnapshot(PICKER_MODE_SINGLE_WITH_STATE, null)
-    is FileKitMode.MultipleWithState -> PendingModeSnapshot(PICKER_MODE_MULTIPLE_WITH_STATE, maxItems)
-}
+private fun <PickerResult, ConsumedResult> FileKitMode<PickerResult, ConsumedResult>.toPendingModeSnapshot(): PendingModeSnapshot =
+    when (this) {
+        FileKitMode.Single -> PendingModeSnapshot(PICKER_MODE_SINGLE, null)
+        is FileKitMode.Multiple -> PendingModeSnapshot(PICKER_MODE_MULTIPLE, maxItems)
+        FileKitMode.SingleWithState -> PendingModeSnapshot(PICKER_MODE_SINGLE_WITH_STATE, null)
+        is FileKitMode.MultipleWithState -> PendingModeSnapshot(PICKER_MODE_MULTIPLE_WITH_STATE, maxItems)
+    }
 
 internal fun dispatchPickerConsumedResult(
     modeId: String,
