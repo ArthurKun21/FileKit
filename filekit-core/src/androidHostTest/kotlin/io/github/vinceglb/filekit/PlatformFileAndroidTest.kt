@@ -126,25 +126,23 @@ class PlatformFileAndroidTest {
     }
 
     @Test
-    fun saveVideoToGallery_sourceStreamCannotBeOpened_throwsFileKitException() {
+    fun saveVideoToGallery_sourceStreamCannotBeOpened_returnsFailureResult() {
         runBlocking {
             val file = PlatformFile(Uri.parse("content://invalid.provider/missing-video.mp4"))
-
-            assertFailsWith<FileKitException> {
-                FileKit.saveVideoToGallery(file = file, filename = "video.mp4")
-            }
+            val result = FileKit.saveVideoToGallery(file = file, filename = "video.mp4")
+            assertTrue(result.isFailure)
+            assertIs<FileKitException>(result.exceptionOrNull())
         }
     }
 
     @Test
-    fun saveImageToGallery_whenMediaStoreInsertFails_throwsFileKitException() {
+    fun saveImageToGallery_whenMediaStoreInsertFails_returnsFailureResult() {
         runBlocking {
             val resolver = ContentResolver.wrap(NullInsertContentProvider())
             initializeFileKitWithResolver(resolver)
-
-            assertFailsWith<FileKitException> {
-                FileKit.saveImageToGallery(bytes = byteArrayOf(1, 2, 3), filename = "image.jpg")
-            }
+            val result = FileKit.saveImageToGallery(bytes = byteArrayOf(1, 2, 3), filename = "image.jpg")
+            assertTrue(result.isFailure)
+            assertIs<FileKitException>(result.exceptionOrNull())
         }
     }
 

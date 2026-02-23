@@ -16,6 +16,7 @@ import androidx.exifinterface.media.ExifInterface
 import io.github.vinceglb.filekit.exceptions.FileKitCoreNotInitializedException
 import io.github.vinceglb.filekit.exceptions.FileKitException
 import io.github.vinceglb.filekit.utils.calculateNewDimensions
+import io.github.vinceglb.filekit.utils.runSuspendCatchingFileKit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -76,28 +77,30 @@ public actual val FileKit.projectDir: PlatformFile
 public actual suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-): Unit = withContext(Dispatchers.IO) {
-    val relativePath = mediaRelativePath()
-    val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-    } else {
-        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-    }
-
-    val details = ContentValues().apply {
-        put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+): Result<Unit> = runSuspendCatchingFileKit {
+    withContext(Dispatchers.IO) {
+        val relativePath = mediaRelativePath()
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
         }
-    }
 
-    writeMediaToGallery(
-        collection = collection,
-        details = details,
-        mediaLabel = "image",
-        filename = filename,
-        writer = { destination -> destination write bytes },
-    )
+        val details = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+            }
+        }
+
+        writeMediaToGallery(
+            collection = collection,
+            details = details,
+            mediaLabel = "image",
+            filename = filename,
+            writer = { destination -> destination write bytes },
+        )
+    }
 }
 
 private suspend fun FileKit.writeMediaToGallery(
@@ -202,9 +205,11 @@ private fun correctBitmapOrientation(imageData: ByteArray, bitmap: Bitmap): Bitm
 public actual suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String,
-): Unit = withContext(Dispatchers.IO) {
-    val mimeType = resolveVideoMimeType(file = file, filename = filename)
-    writeVideoToGallery(file = file, filename = filename, mimeType = mimeType)
+): Result<Unit> = runSuspendCatchingFileKit {
+    withContext(Dispatchers.IO) {
+        val mimeType = resolveVideoMimeType(file = file, filename = filename)
+        writeVideoToGallery(file = file, filename = filename, mimeType = mimeType)
+    }
 }
 
 private suspend fun FileKit.writeVideoToGallery(

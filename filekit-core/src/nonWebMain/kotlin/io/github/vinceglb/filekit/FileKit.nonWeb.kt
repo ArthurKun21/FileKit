@@ -1,6 +1,7 @@
 package io.github.vinceglb.filekit
 
 import androidx.annotation.IntRange
+import io.github.vinceglb.filekit.utils.runSuspendCatchingFileKit
 
 /**
  * Returns the directory for storing files on this platform.
@@ -40,36 +41,45 @@ public expect val FileKit.projectDir: PlatformFile
  *
  * @param bytes The image data as a byte array.
  * @param filename The name of the file to save.
+ * @return [Result.success] when the image is saved. [Result.failure] when it fails.
  */
 public expect suspend fun FileKit.saveImageToGallery(
     bytes: ByteArray,
     filename: String,
-)
+): Result<Unit>
 
 /**
  * Saves an image from a [PlatformFile] to the platform's gallery or photo album.
  *
  * @param file The [PlatformFile] containing the image.
  * @param filename The name of the file to save. Defaults to the file's name.
+ * @return [Result.success] when the image is saved. [Result.failure] when it fails.
  */
 public suspend fun FileKit.saveImageToGallery(
     file: PlatformFile,
     filename: String = file.name,
-): Unit = saveImageToGallery(
-    bytes = file.readBytes(),
-    filename = filename,
-)
+): Result<Unit> {
+    val imageBytes = runSuspendCatchingFileKit { file.readBytes() }.getOrElse { error ->
+        return Result.failure(error)
+    }
+
+    return saveImageToGallery(
+        bytes = imageBytes,
+        filename = filename,
+    )
+}
 
 /**
  * Saves a video to the platform's gallery or video album.
  *
  * @param file The [PlatformFile] containing the video.
  * @param filename The name of the file to save.
+ * @return [Result.success] when the video is saved. [Result.failure] when it fails.
  */
 public expect suspend fun FileKit.saveVideoToGallery(
     file: PlatformFile,
     filename: String = file.name,
-)
+): Result<Unit>
 
 /**
  * Compresses an image.
