@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.io.IOException
 import kotlinx.io.files.FileNotFoundException
 import kotlinx.io.files.Path
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -153,6 +154,42 @@ class PlatformFileNonWebTest {
     fun PlatformFile_copyTo_sameFile_throws() = runTest {
         assertFailsWith<FileKitException> {
             textFile.copyTo(textFile)
+        }
+    }
+
+    @Test
+    fun PlatformFile_atomicMove_directoryDestination_movesIntoDirectory() = runTest {
+        val sourceName = "atomic-move-source-${Random.nextInt(1_000_000)}.txt"
+        val sourceDirectory = resourceDirectory / "atomic-move-source-dir"
+        val source = sourceDirectory / sourceName
+        val destination = resourceDirectory / sourceName
+        val content = "Atomic move into directory destination"
+
+        try {
+            sourceDirectory.createDirectories()
+            if (source.exists()) {
+                source.delete(mustExist = false)
+            }
+            if (destination.exists()) {
+                destination.delete(mustExist = false)
+            }
+
+            source.writeString(content)
+            source.atomicMove(resourceDirectory)
+
+            assertFalse(source.exists())
+            assertTrue(destination.exists())
+            assertEquals(expected = content, actual = destination.readString())
+        } finally {
+            if (source.exists()) {
+                source.delete(mustExist = false)
+            }
+            if (destination.exists()) {
+                destination.delete(mustExist = false)
+            }
+            if (sourceDirectory.exists()) {
+                sourceDirectory.delete(mustExist = false)
+            }
         }
     }
 
