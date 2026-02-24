@@ -24,9 +24,8 @@ struct ComposeView: NSViewRepresentable {
         let view = AttachAwareView()
         view.onMoveToWindow = { [weak coordinator = context.coordinator] window in
             guard let coordinator else { return }
-            guard coordinator.delegate == nil else { return }
             guard let window else { return }
-            coordinator.delegate = ComposeEntryPointKt.AttachMainComposeView(window: window)
+            attachCompose(to: window, coordinator: coordinator)
         }
         return view
     }
@@ -35,15 +34,26 @@ struct ComposeView: NSViewRepresentable {
         guard let view = nsView as? AttachAwareView else { return }
         view.onMoveToWindow = { [weak coordinator = context.coordinator] window in
             guard let coordinator else { return }
-            guard coordinator.delegate == nil else { return }
             guard let window else { return }
-            coordinator.delegate = ComposeEntryPointKt.AttachMainComposeView(window: window)
+            attachCompose(to: window, coordinator: coordinator)
         }
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
         coordinator.delegate?.destroy()
         coordinator.delegate = nil
+    }
+
+    private func attachCompose(to window: NSWindow, coordinator: Coordinator) {
+        configureWindowAppearance(window)
+        guard coordinator.delegate == nil else { return }
+        coordinator.delegate = ComposeEntryPointKt.AttachMainComposeView(window: window)
+    }
+
+    private func configureWindowAppearance(_ window: NSWindow) {
+        window.styleMask.insert(.fullSizeContentView)
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
     }
 }
 
