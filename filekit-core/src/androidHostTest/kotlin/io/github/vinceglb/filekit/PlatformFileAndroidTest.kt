@@ -32,6 +32,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertIsNot
 import kotlin.test.assertTrue
@@ -188,6 +189,42 @@ class PlatformFileAndroidTest {
                 assertContentEquals(expected = sourceBytes, actual = destination.readBytes())
             } finally {
                 destination.delete(mustExist = false)
+            }
+        }
+    }
+
+    @Test
+    fun PlatformFile_atomicMove_fileDestinationDirectory_movesIntoDirectory() {
+        runBlocking {
+            val sourceDirectory = File.createTempFile("filekit-atomic-source-", "").apply {
+                delete()
+                mkdirs()
+                deleteOnExit()
+            }
+            val destinationDirectory = File.createTempFile("filekit-atomic-destination-", "").apply {
+                delete()
+                mkdirs()
+                deleteOnExit()
+            }
+            val sourceFile = File(sourceDirectory, "source.txt").apply {
+                writeText("filekit-atomic-move")
+                deleteOnExit()
+            }
+            val movedFile = File(destinationDirectory, sourceFile.name).apply {
+                deleteOnExit()
+            }
+
+            try {
+                PlatformFile(sourceFile).atomicMove(PlatformFile(destinationDirectory))
+
+                assertFalse(sourceFile.exists())
+                assertTrue(movedFile.exists())
+                assertEquals(expected = "filekit-atomic-move", actual = movedFile.readText())
+            } finally {
+                movedFile.delete()
+                sourceFile.delete()
+                destinationDirectory.delete()
+                sourceDirectory.delete()
             }
         }
     }

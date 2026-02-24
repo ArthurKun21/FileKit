@@ -436,9 +436,12 @@ public actual suspend fun PlatformFile.atomicMove(destination: PlatformFile): Un
     withContext(Dispatchers.IO) {
         when {
             androidFile is AndroidFile.FileWrapper && destination.androidFile is AndroidFile.FileWrapper -> {
+                val resolvedDestination = destination.resolveAtomicMoveDestination(
+                    source = this@atomicMove,
+                )
                 SystemFileSystem.atomicMove(
                     source = toKotlinxIoPath(),
-                    destination = destination.toKotlinxIoPath(),
+                    destination = resolvedDestination.toKotlinxIoPath(),
                 )
             }
 
@@ -454,6 +457,13 @@ public actual suspend fun PlatformFile.atomicMove(destination: PlatformFile): Un
             }
         }
     }
+
+private fun PlatformFile.resolveAtomicMoveDestination(source: PlatformFile): PlatformFile {
+    if (androidFile is AndroidFile.FileWrapper && isDirectory()) {
+        return PlatformFile(toKotlinxIoPath() / source.name)
+    }
+    return this
+}
 
 public actual suspend fun PlatformFile.delete(mustExist: Boolean): Unit =
     withContext(Dispatchers.IO) {

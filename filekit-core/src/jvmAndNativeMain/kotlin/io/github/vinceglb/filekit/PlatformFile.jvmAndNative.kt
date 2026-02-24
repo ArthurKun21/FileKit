@@ -62,12 +62,24 @@ public actual suspend fun PlatformFile.delete(mustExist: Boolean): Unit =
 public actual suspend fun PlatformFile.atomicMove(destination: PlatformFile): Unit =
     withContext(Dispatchers.IO) {
         withScopedAccess {
-            SystemFileSystem.atomicMove(
-                source = toKotlinxIoPath(),
-                destination = destination.toKotlinxIoPath(),
-            )
+            destination.withScopedAccess { scopedDestination ->
+                val resolvedDestination = scopedDestination.resolveAtomicMoveDestination(
+                    source = this@atomicMove,
+                )
+                SystemFileSystem.atomicMove(
+                    source = toKotlinxIoPath(),
+                    destination = resolvedDestination.toKotlinxIoPath(),
+                )
+            }
         }
     }
+
+private fun PlatformFile.resolveAtomicMoveDestination(source: PlatformFile): PlatformFile {
+    if (isDirectory()) {
+        return PlatformFile(toKotlinxIoPath() / source.name)
+    }
+    return this
+}
 
 internal actual suspend fun PlatformFile.prepareDestinationForWrite(
     source: PlatformFile,

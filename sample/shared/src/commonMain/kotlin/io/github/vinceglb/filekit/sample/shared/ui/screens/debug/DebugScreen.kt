@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,8 +64,15 @@ private fun DebugScreen(
     val folderPicker = rememberDirectoryPickerLauncher(directory = null) { folder ->
         scope.launch {
             folder?.let {
-                debugPlatformTest(folder)
+                // debugPlatformTest(folder)
+                bookmarkFolder(folder)
             }
+        }
+    }
+
+    fun test() {
+        scope.launch {
+            loadBookmarkedFolder()
         }
     }
 
@@ -91,10 +100,18 @@ private fun DebugScreen(
                     primaryButtonState = buttonState,
                     onPrimaryButtonClick = {
                         buttonState = AppScreenHeaderButtonState.Loading
-                        picker.launch()
+                        folderPicker.launch()
                     },
                     modifier = Modifier.sizeIn(maxWidth = AppMaxWidth),
                 )
+            }
+
+            item {
+                Button(
+                    onClick = { test() },
+                ) {
+                    Text("Load Bookmarked Folder")
+                }
             }
 
             item {
@@ -111,6 +128,10 @@ private fun DebugScreen(
 }
 
 internal expect suspend fun debugPlatformTest(file: PlatformFile)
+
+internal expect suspend fun bookmarkFolder(folder: PlatformFile)
+
+internal expect suspend fun loadBookmarkedFolder(): PlatformFile
 
 @Preview
 @Composable
