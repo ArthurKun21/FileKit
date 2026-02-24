@@ -3,6 +3,7 @@
 
 package io.github.vinceglb.filekit.dialogs.compose
 
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitAndroidDialogsInternal
@@ -108,11 +109,73 @@ class AndroidComposePickerReliabilityTest {
     }
 
     @Test
+    fun PickerLaunchSafely_whenActivityNotFound_returnsFalse() {
+        val launched = launchPickerSafely {
+            throw ActivityNotFoundException("No activity found")
+        }
+
+        assertFalse(launched)
+    }
+
+    @Test
+    fun PickerLaunchSafely_whenNoError_returnsTrue() {
+        var launched = false
+
+        val wasLaunched = launchPickerSafely {
+            launched = true
+        }
+
+        assertTrue(wasLaunched)
+        assertTrue(launched)
+    }
+
+    @Test
+    fun PickerLaunchOutcome_primaryFailsAndFallbackSucceeds_returnsFallbackLaunched() {
+        var fallbackCalls = 0
+
+        val outcome = resolvePickerLaunchOutcome(
+            launchPrimary = { false },
+            launchFallback = {
+                fallbackCalls++
+                true
+            },
+        )
+
+        assertEquals(PickerLaunchOutcome.FallbackLaunched, outcome)
+        assertEquals(1, fallbackCalls)
+    }
+
+    @Test
+    fun PickerLaunchOutcome_primaryAndFallbackFail_returnsCancelled() {
+        val outcome = resolvePickerLaunchOutcome(
+            launchPrimary = { false },
+            launchFallback = { false },
+        )
+
+        assertEquals(PickerLaunchOutcome.Cancelled, outcome)
+    }
+
+    @Test
     fun PickerResult_singleModeWhenCancelled_emitsNullResult() {
         val consumed = mutableListOf<Any?>()
 
         dispatchPickerConsumedResult(
             modeId = PICKER_MODE_SINGLE,
+            maxItems = null,
+            files = null,
+            onConsumed = { consumed += it },
+        )
+
+        assertEquals(expected = 1, actual = consumed.size)
+        assertNull(consumed.single())
+    }
+
+    @Test
+    fun PickerResult_multipleModeWhenCancelled_emitsNullResult() {
+        val consumed = mutableListOf<Any?>()
+
+        dispatchPickerConsumedResult(
+            modeId = PICKER_MODE_MULTIPLE,
             maxItems = null,
             files = null,
             onConsumed = { consumed += it },
@@ -181,6 +244,36 @@ class AndroidComposePickerReliabilityTest {
             modeId = PICKER_MODE_MULTIPLE_WITH_STATE,
             maxItems = 3,
             files = emptyList(),
+            onConsumed = { consumed += it },
+        )
+
+        assertEquals(expected = 1, actual = consumed.size)
+        assertIs<FileKitPickerState.Cancelled>(consumed.single())
+    }
+
+    @Test
+    fun PickerResult_singleWithStateWhenCancelled_emitsCancelled() {
+        val consumed = mutableListOf<Any?>()
+
+        dispatchPickerConsumedResult(
+            modeId = PICKER_MODE_SINGLE_WITH_STATE,
+            maxItems = null,
+            files = null,
+            onConsumed = { consumed += it },
+        )
+
+        assertEquals(expected = 1, actual = consumed.size)
+        assertIs<FileKitPickerState.Cancelled>(consumed.single())
+    }
+
+    @Test
+    fun PickerResult_multipleWithStateWhenNull_emitsCancelled() {
+        val consumed = mutableListOf<Any?>()
+
+        dispatchPickerConsumedResult(
+            modeId = PICKER_MODE_MULTIPLE_WITH_STATE,
+            maxItems = 3,
+            files = null,
             onConsumed = { consumed += it },
         )
 

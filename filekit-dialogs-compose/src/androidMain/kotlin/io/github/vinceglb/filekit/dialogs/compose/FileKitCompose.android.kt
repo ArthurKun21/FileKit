@@ -3,6 +3,7 @@
 package io.github.vinceglb.filekit.dialogs.compose
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -101,6 +102,14 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
         )
     }
 
+    fun dispatchCancelledResult(launcherId: String) {
+        pendingLauncherId = launcherId
+        dispatchPendingResult(
+            launcherId = launcherId,
+            files = null,
+        )
+    }
+
     val visualSingleLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         dispatchPendingResult(
             launcherId = LAUNCHER_VISUAL_SINGLE,
@@ -145,6 +154,7 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
                 FileKitType.Video,
                 FileKitType.ImageAndVideo,
                 -> {
+                    val fallbackMimeTypes = pickerType.toVisualFallbackMimeTypes()
                     val request = when (pickerType) {
                         FileKitType.Image -> PickVisualMediaRequest(ImageOnly)
                         FileKitType.Video -> PickVisualMediaRequest(VideoOnly)
@@ -156,18 +166,66 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
                             modeId = modeSnapshot.modeId,
                             maxItems = modeSnapshot.maxItems,
                         ) -> {
-                            pendingLauncherId = LAUNCHER_VISUAL_SINGLE
-                            visualSingleLauncher.launch(request)
+                            when (
+                                resolvePickerLaunchOutcome(
+                                    launchPrimary = {
+                                        pendingLauncherId = LAUNCHER_VISUAL_SINGLE
+                                        launchPickerSafely {
+                                            visualSingleLauncher.launch(request)
+                                        }
+                                    },
+                                    launchFallback = {
+                                        pendingLauncherId = LAUNCHER_FILE_SINGLE
+                                        launchPickerSafely {
+                                            fileSingleLauncher.launch(fallbackMimeTypes)
+                                        }
+                                    },
+                                )
+                            ) {
+                                PickerLaunchOutcome.PrimaryLaunched,
+                                PickerLaunchOutcome.FallbackLaunched,
+                                -> {
+                                    Unit
+                                }
+
+                                PickerLaunchOutcome.Cancelled -> {
+                                    dispatchCancelledResult(LAUNCHER_FILE_SINGLE)
+                                }
+                            }
                         }
 
                         else -> {
-                            pendingLauncherId = LAUNCHER_VISUAL_MULTIPLE
-                            visualMultipleLauncher.launch(
-                                DynamicPickMultipleVisualMediaInput(
-                                    request = request,
-                                    maxItems = modeSnapshot.maxItems,
-                                ),
-                            )
+                            when (
+                                resolvePickerLaunchOutcome(
+                                    launchPrimary = {
+                                        pendingLauncherId = LAUNCHER_VISUAL_MULTIPLE
+                                        launchPickerSafely {
+                                            visualMultipleLauncher.launch(
+                                                DynamicPickMultipleVisualMediaInput(
+                                                    request = request,
+                                                    maxItems = modeSnapshot.maxItems,
+                                                ),
+                                            )
+                                        }
+                                    },
+                                    launchFallback = {
+                                        pendingLauncherId = LAUNCHER_FILE_MULTIPLE
+                                        launchPickerSafely {
+                                            fileMultipleLauncher.launch(fallbackMimeTypes)
+                                        }
+                                    },
+                                )
+                            ) {
+                                PickerLaunchOutcome.PrimaryLaunched,
+                                PickerLaunchOutcome.FallbackLaunched,
+                                -> {
+                                    Unit
+                                }
+
+                                PickerLaunchOutcome.Cancelled -> {
+                                    dispatchCancelledResult(LAUNCHER_FILE_MULTIPLE)
+                                }
+                            }
                         }
                     }
                 }
@@ -177,12 +235,22 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
                     when {
                         modeSnapshot.isSingleMode() -> {
                             pendingLauncherId = LAUNCHER_FILE_SINGLE
-                            fileSingleLauncher.launch(mimeTypes)
+                            val isLaunched = launchPickerSafely {
+                                fileSingleLauncher.launch(mimeTypes)
+                            }
+                            if (!isLaunched) {
+                                dispatchCancelledResult(LAUNCHER_FILE_SINGLE)
+                            }
                         }
 
                         else -> {
                             pendingLauncherId = LAUNCHER_FILE_MULTIPLE
-                            fileMultipleLauncher.launch(mimeTypes)
+                            val isLaunched = launchPickerSafely {
+                                fileMultipleLauncher.launch(mimeTypes)
+                            }
+                            if (!isLaunched) {
+                                dispatchCancelledResult(LAUNCHER_FILE_MULTIPLE)
+                            }
                         }
                     }
                 }
@@ -225,7 +293,13 @@ public actual fun rememberDirectoryPickerLauncher(
         PickerResultLauncher {
             val initialUri = currentDirectory?.path?.toUri()
             hasPendingLaunch = true
-            launcher.launch(initialUri)
+            val isLaunched = launchPickerSafely {
+                launcher.launch(initialUri)
+            }
+            if (!isLaunched) {
+                hasPendingLaunch = false
+                currentOnResult(null)
+            }
         }
     }
 }
@@ -400,6 +474,30 @@ internal fun launchCameraSafely(
     false
 }
 
+internal fun launchPickerSafely(
+    launch: () -> Unit,
+): Boolean = try {
+    launch()
+    true
+} catch (_: ActivityNotFoundException) {
+    false
+}
+
+internal enum class PickerLaunchOutcome {
+    PrimaryLaunched,
+    FallbackLaunched,
+    Cancelled,
+}
+
+internal fun resolvePickerLaunchOutcome(
+    launchPrimary: () -> Boolean,
+    launchFallback: () -> Boolean,
+): PickerLaunchOutcome = when {
+    launchPrimary() -> PickerLaunchOutcome.PrimaryLaunched
+    launchFallback() -> PickerLaunchOutcome.FallbackLaunched
+    else -> PickerLaunchOutcome.Cancelled
+}
+
 internal fun resolveCameraResult(
     success: Boolean,
     pendingDestinationUri: String?,
@@ -415,6 +513,13 @@ private data class PendingModeSnapshot(
 
 private fun PendingModeSnapshot.isSingleMode(): Boolean =
     modeId == PICKER_MODE_SINGLE || modeId == PICKER_MODE_SINGLE_WITH_STATE
+
+internal fun FileKitType.toVisualFallbackMimeTypes(): Array<String> = when (this) {
+    FileKitType.Image -> arrayOf("image/*")
+    FileKitType.Video -> arrayOf("video/*")
+    FileKitType.ImageAndVideo -> arrayOf("image/*", "video/*")
+    is FileKitType.File -> error("File type does not use visual fallback MIME types")
+}
 
 internal fun shouldUseSingleVisualLauncher(
     modeId: String,
