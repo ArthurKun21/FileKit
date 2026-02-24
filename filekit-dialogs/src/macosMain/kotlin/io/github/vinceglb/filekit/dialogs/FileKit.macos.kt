@@ -43,7 +43,7 @@ internal actual suspend fun FileKit.platformOpenFilePicker(
  *
  * @param directory The initial directory. Supported on desktop platforms.
  * @param dialogSettings Platform-specific settings for the dialog.
- * @return The picked directory as a [PlatformFile], or null if cancelled.
+ * @return The picked directory as a [PlatformFile], or null if canceled.
  */
 public actual suspend fun FileKit.openDirectoryPicker(
     directory: PlatformFile?,
@@ -63,7 +63,7 @@ public actual suspend fun FileKit.openDirectoryPicker(
  * @param extension The file extension (optional).
  * @param directory The initial directory. Supported on desktop platforms.
  * @param dialogSettings Platform-specific settings for the dialog.
- * @return The path where the file should be saved as a [PlatformFile], or null if cancelled.
+ * @return The path where the file should be saved as a [PlatformFile], or null if canceled.
  */
 public actual suspend fun FileKit.openFileSaver(
     suggestedName: String,
@@ -95,7 +95,7 @@ public actual suspend fun FileKit.openFileSaver(
     // Run the NSSavePanel
     val result = nsSavePanel.runModal()
 
-    // If the user cancelled the operation, return null
+    // If the user canceled the operation, return null
     if (result != NSModalResponseOK) {
         return null
     }
@@ -151,7 +151,7 @@ private fun callPicker(
     // Run the NSOpenPanel
     val result = nsOpenPanel.runModal()
 
-    // If the user cancelled the operation, return null
+    // If the user canceled the operation, return null
     if (result != NSModalResponseOK) {
         return null
     }
@@ -176,7 +176,7 @@ private fun NSOpenPanel.configure(
     // Set the allowed file types
     extensions?.let { allowedFileTypes = extensions.toList() }
 
-    // Setup the picker mode and files extensions
+    // Set up the picker mode and files extensions
     when (mode) {
         Mode.Single -> {
             canChooseFiles = true
