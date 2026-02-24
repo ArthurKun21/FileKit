@@ -3,6 +3,7 @@
 package io.github.vinceglb.filekit.dialogs
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -350,24 +351,45 @@ private suspend fun callFilePicker(
 
             when {
                 mode is PickerMode.Single || (mode is PickerMode.Multiple && mode.maxItems == 1) -> {
-                    val contract = PickVisualMedia()
-                    awaitActivityResult(
-                        registry = registry,
-                        contract = contract,
-                        input = request,
+                    runPickerLaunchWithActivityNotFoundFallback(
+                        primary = {
+                            awaitActivityResult(
+                                registry = registry,
+                                contract = PickVisualMedia(),
+                                input = request,
+                            )
+                        },
+                        fallback = {
+                            awaitActivityResult(
+                                registry = registry,
+                                contract = ActivityResultContracts.OpenDocument(),
+                                input = type.toVisualFallbackMimeTypes(),
+                            )
+                        },
                     )?.let { listOf(PlatformFile(it)) }
                 }
 
                 mode is PickerMode.Multiple -> {
-                    val contract = when {
-                        mode.maxItems != null -> PickMultipleVisualMedia(mode.maxItems)
-                        else -> PickMultipleVisualMedia()
-                    }
-                    awaitActivityResult(
-                        registry = registry,
-                        contract = contract,
-                        input = request,
-                    ).map(::PlatformFile)
+                    runPickerLaunchWithActivityNotFoundFallback(
+                        primary = {
+                            val contract = when {
+                                mode.maxItems != null -> PickMultipleVisualMedia(mode.maxItems)
+                                else -> PickMultipleVisualMedia()
+                            }
+                            awaitActivityResult(
+                                registry = registry,
+                                contract = contract,
+                                input = request,
+                            )
+                        },
+                        fallback = {
+                            awaitActivityResult(
+                                registry = registry,
+                                contract = ActivityResultContracts.OpenMultipleDocuments(),
+                                input = type.toVisualFallbackMimeTypes(),
+                            )
+                        },
+                    )?.map(::PlatformFile)
                 }
 
                 else -> {
@@ -379,27 +401,54 @@ private suspend fun callFilePicker(
         is FileKitType.File -> {
             when (mode) {
                 is PickerMode.Single -> {
-                    val contract = ActivityResultContracts.OpenDocument()
-                    awaitActivityResult(
-                        registry = registry,
-                        contract = contract,
-                        input = FileKitAndroidDialogsInternal.getMimeTypes(type.extensions),
+                    runPickerLaunchWithActivityNotFoundFallback(
+                        primary = {
+                            awaitActivityResult(
+                                registry = registry,
+                                contract = ActivityResultContracts.OpenDocument(),
+                                input = FileKitAndroidDialogsInternal.getMimeTypes(type.extensions),
+                            )
+                        },
                     )?.let { listOf(PlatformFile(it)) }
                 }
 
                 is PickerMode.Multiple -> {
                     // TODO there might be a way to limit the amount of documents, but
                     //  I haven't found it yet.
-                    val contract = ActivityResultContracts.OpenMultipleDocuments()
-                    awaitActivityResult(
-                        registry = registry,
-                        contract = contract,
-                        input = FileKitAndroidDialogsInternal.getMimeTypes(type.extensions),
-                    ).map(::PlatformFile)
+                    runPickerLaunchWithActivityNotFoundFallback(
+                        primary = {
+                            awaitActivityResult(
+                                registry = registry,
+                                contract = ActivityResultContracts.OpenMultipleDocuments(),
+                                input = FileKitAndroidDialogsInternal.getMimeTypes(type.extensions),
+                            )
+                        },
+                    )?.map(::PlatformFile)
                 }
             }
         }
     }
+}
+
+internal suspend fun <O> runPickerLaunchWithActivityNotFoundFallback(
+    primary: suspend () -> O,
+    fallback: (suspend () -> O)? = null,
+): O? = try {
+    primary()
+} catch (_: ActivityNotFoundException) {
+    val fallbackLaunch = fallback ?: return null
+    try {
+        fallbackLaunch()
+    } catch (_: ActivityNotFoundException) {
+        null
+    }
+}
+
+internal fun FileKitType.toVisualFallbackMimeTypes(): Array<String> = when (this) {
+    FileKitType.Image -> arrayOf("image/*")
+    FileKitType.Video -> arrayOf("video/*")
+    FileKitType.ImageAndVideo -> arrayOf("image/*", "video/*")
+    is FileKitType.File -> error("File type does not use visual fallback MIME types")
 }
 
 private suspend fun <I, O> awaitActivityResult(
