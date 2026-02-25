@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/78fbdb24-6210-4d41-afeb-57d199a743f8" alt="FileKit for Kotlin Multiplatform and Compose Multiplatform" />
+  <img src="https://github.com/user-attachments/assets/fa59bcd1-7906-4d14-9fa3-73845269b811" alt="FileKit for Kotlin Multiplatform and Compose Multiplatform" />
 
   <br>
 
