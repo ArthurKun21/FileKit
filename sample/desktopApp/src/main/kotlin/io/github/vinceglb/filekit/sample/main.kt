@@ -11,7 +11,7 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.sample.shared.App
 
 fun main() {
-    // MacOS System Appearance
+    // macOS System Appearance
     System.setProperty("apple.awt.application.appearance", "system")
 
     application {
