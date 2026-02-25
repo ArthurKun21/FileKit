@@ -62,7 +62,6 @@ import platform.UniformTypeIdentifiers.UTTypeItem
 import platform.UniformTypeIdentifiers.UTTypeMovie
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 private object FileKitDialog {
     // Create a reference to the picker delegate to prevent it from being garbage collected
@@ -111,7 +110,7 @@ internal actual suspend fun FileKit.platformOpenFilePicker(
  *
  * @param directory The initial directory. Supported on desktop platforms.
  * @param dialogSettings Platform-specific settings for the dialog.
- * @return The picked directory as a [PlatformFile], or null if cancelled.
+ * @return The picked directory as a [PlatformFile], or null if canceled.
  */
 public actual suspend fun FileKit.openDirectoryPicker(
     directory: PlatformFile?,
@@ -129,7 +128,7 @@ public actual suspend fun FileKit.openDirectoryPicker(
  * @param extension The file extension (optional).
  * @param directory The initial directory. Supported on desktop platforms.
  * @param dialogSettings Platform-specific settings for the dialog.
- * @return The path where the file should be saved as a [PlatformFile], or null if cancelled.
+ * @return The path where the file should be saved as a [PlatformFile], or null if canceled.
  */
 @OptIn(ExperimentalForeignApi::class)
 public actual suspend fun FileKit.openFileSaver(
@@ -138,7 +137,7 @@ public actual suspend fun FileKit.openFileSaver(
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? = withContext(Dispatchers.Main) {
-    suspendCoroutine { continuation ->
+    suspendCancellableCoroutine { continuation ->
         // Create a picker delegate
         documentPickerDelegate = DocumentPickerDelegate(
             onFilesPicked = { urls ->
@@ -159,7 +158,7 @@ public actual suspend fun FileKit.openFileSaver(
             },
         )
 
-        // suggestedName cannot include "/" because the OS interprets it as a directory separator.
+        // the suggestedName cannot include "/" because the OS interprets it as a directory separator.
         // However, "Files" renders ":" as "/", so we can just use ":" and the user will see "/".
         val sanitizedSuggestedName = suggestedName.replace("/", ":")
         val fileName = buildFileSaverSuggestedName(
@@ -211,7 +210,7 @@ public actual suspend fun FileKit.openFileSaver(
  * @param cameraFacing The camera facing (System, Back or Front).
  * @param destinationFile The file where the captured media will be saved.
  * @param openCameraSettings Platform-specific settings for the camera.
- * @return The saved file as a [PlatformFile], or null if cancelled.
+ * @return The saved file as a [PlatformFile], or null if canceled.
  */
 public actual suspend fun FileKit.openCameraPicker(
     type: FileKitCameraType,
@@ -219,7 +218,7 @@ public actual suspend fun FileKit.openCameraPicker(
     destinationFile: PlatformFile,
     openCameraSettings: FileKitOpenCameraSettings,
 ): PlatformFile? = withContext(Dispatchers.Main) {
-    suspendCoroutine { continuation ->
+    suspendCancellableCoroutine { continuation ->
         cameraControllerDelegate = CameraControllerDelegate(
             onImagePicked = { image ->
                 if (image != null) {
@@ -310,7 +309,7 @@ public actual suspend fun FileKit.shareFile(
     val shareVC = UIActivityViewController(activityItems, null)
 
     if (isIpad()) {
-        // ipad need sourceView for show
+        // iPad need sourceView for show
         shareVC.popoverPresentationController?.apply {
             sourceView = viewController.view
             sourceRect = viewController.view.center.useContents { CGRectMake(x, y, 0.0, 0.0) }
@@ -374,7 +373,7 @@ private suspend fun callPicker(
     contentTypes: List<UTType>,
     directory: PlatformFile?,
 ): List<NSURL>? = withContext(Dispatchers.Main) {
-    suspendCoroutine { continuation ->
+    suspendCancellableCoroutine { continuation ->
         // Create a picker delegate
         documentPickerDelegate = DocumentPickerDelegate(
             onFilesPicked = { urls -> continuation.resume(urls) },
@@ -387,7 +386,7 @@ private suspend fun callPicker(
         // Set the initial directory
         directory?.let { pickerController.directoryURL = NSURL.fileURLWithPath(it.path) }
 
-        // Setup the picker mode
+        // Set up the picker mode
         pickerController.allowsMultipleSelection = mode == Mode.Multiple
 
         // Assign the delegate to the picker controller
@@ -405,7 +404,7 @@ private suspend fun callPicker(
 private suspend fun getPhPickerResults(
     mode: PickerMode,
     type: FileKitType,
-): List<PHPickerResult> = suspendCoroutine { continuation ->
+): List<PHPickerResult> = suspendCancellableCoroutine { continuation ->
     // Create a picker delegate
     phPickerDelegate = PhPickerDelegate(onFilesPicked = continuation::resume)
     phPickerDismissDelegate = PhPickerDismissDelegate(onFilesPicked = continuation::resume)
@@ -483,7 +482,7 @@ private fun callPhPicker(
     val orderedFiles = arrayOfNulls<PlatformFile>(pickerResults.size)
     val lock = Mutex()
 
-    // Launch a child coroutine for every copy, preserving index
+    // Launch a child coroutine for every copy, preserving the index
     pickerResults
         .mapIndexed { index, result ->
             launch(Dispatchers.IO) {
@@ -502,7 +501,7 @@ private fun callPhPicker(
                             }
 
                             else -> {
-                                // Must copy the URL here because it becomes invalid outside of the loadFileRepresentationForTypeIdentifier callback scope
+                                // Must copy the URL here because it becomes invalid outside the loadFileRepresentationForTypeIdentifier callback scope
                                 val tempUrl = url?.let {
                                     copyToTempFile(fileManager, it, tempRoot.lastPathComponent!!)
                                 }
@@ -513,7 +512,7 @@ private fun callPhPicker(
                 } ?: return@launch // skip nulls
 
                 lock.withLock {
-                    // Insert at original index to preserve selection order
+                    // Insert at the original index to preserve selection order
                     orderedFiles[index] = PlatformFile(src)
                     send(FileKitPickerState.Progress(orderedFiles.filterNotNull(), pickerResults.size))
                 }
