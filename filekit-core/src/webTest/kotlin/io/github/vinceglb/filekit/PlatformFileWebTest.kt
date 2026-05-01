@@ -65,6 +65,14 @@ class PlatformFileWebTest {
     }
 
     @Test
+    fun testRegularFilePathFallsBackToName() {
+        assertEquals(
+            expected = "hello.txt",
+            actual = platformFile.path,
+        )
+    }
+
+    @Test
     fun testPlatformFileReadBytes() = runTest {
         val bytes = platformFile.readBytes()
         assertEquals(

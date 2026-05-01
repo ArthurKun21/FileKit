@@ -14,9 +14,11 @@ public sealed class WebFile {
     @OptIn(ExperimentalWasmJsInterop::class)
     public class FileWrapper(
         public val file: BrowserFile,
-        public val path: String = file.webkitRelativePath.orEmpty(),
+        path: String? = file.webkitRelativePath,
         public val parent: DirectoryWrapper? = null,
     ) : WebFile() {
+        public val path: String = path?.takeIf { it.isNotBlank() } ?: file.name
+
         public val name: String
             get() = file.name
 
