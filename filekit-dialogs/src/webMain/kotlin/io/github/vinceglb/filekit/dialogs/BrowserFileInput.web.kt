@@ -19,9 +19,10 @@ internal suspend fun openBrowserFileInput(
     directoryMode: Boolean,
 ): List<WebFile.FileWrapper>? = withContext(Dispatchers.Default) {
     suspendCancellableCoroutine { continuation ->
-        val input = document.createElement("input") as BrowserFileInputElement
-        input.style.display = "none"
-        document.body?.appendChild(input)
+        val inputElement = document.createElement("input")
+        val input = inputElement as BrowserFileInputElement
+        (inputElement as HTMLElement).style.display = "none"
+        document.body?.appendChild(inputElement)
 
         input.apply {
             this.type = "file"
@@ -30,11 +31,9 @@ internal suspend fun openBrowserFileInput(
             webkitdirectory = directoryMode
         }
 
-        input.onchange = { event ->
+        input.onchange = {
             try {
-                val result = event.target
-                    ?.unsafeCast<BrowserFileInputElement>()
-                    ?.files
+                val result = input.files
                     ?.asList()
                     ?.map { WebFile.FileWrapper(it.unsafeCast<BrowserFile>()) }
 
@@ -42,13 +41,13 @@ internal suspend fun openBrowserFileInput(
             } catch (e: Throwable) {
                 continuation.resumeWithException(e)
             } finally {
-                document.body?.removeChild(input)
+                document.body?.removeChild(inputElement)
             }
         }
 
         input.oncancel = {
             continuation.resume(null)
-            document.body?.removeChild(input)
+            document.body?.removeChild(inputElement)
         }
 
         input.click()
@@ -77,11 +76,15 @@ private val FileKitType.acceptAttribute: String
     }
 
 @JsName("HTMLInputElement")
-internal abstract external class BrowserFileInputElement : HTMLElement {
-    open var accept: String
-    open val files: FileList?
-    open var multiple: Boolean
-    open var webkitdirectory: Boolean
-    open var type: String
-    open var value: String
+internal external interface BrowserFileInputElement {
+    var accept: String
+    val files: FileList?
+    var multiple: Boolean
+    var webkitdirectory: Boolean
+    var type: String
+    var value: String
+    var onchange: (() -> Unit)?
+    var oncancel: (() -> Unit)?
+
+    fun click()
 }
