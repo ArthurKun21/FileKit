@@ -56,9 +56,9 @@ val file = PlatformFile(nsUrl)
 ```
 
 ```kotlin JS/WASM
-// From a Browser File
-val browserFile: File = event.target.unsafeCast<HTMLInputElement>().files[0]
-val file = PlatformFile(browserFile)
+// Web files and virtual directories are provided by FileKit pickers.
+val file = FileKit.openFilePicker()
+val directory = FileKit.openDirectoryPicker()
 ```
 </CodeGroup>
 
@@ -105,6 +105,8 @@ val mimeType: MimeType? = file.mimeType()
 ```
 
 On Android, `name` is resolved using provider metadata. For Photo Picker URIs, FileKit performs a best-effort lookup of `MediaStore.MediaColumns.DISPLAY_NAME` when providers return synthetic names (for example `18.jpg`), then falls back to a stable provider/URI-derived name if the original filename is not accessible.
+
+On JS/WASM, directory picker results are virtual directory trees built from browser file entries. Empty directories are not exposed by browsers, and directory `lastModified()` values are synthetic.
 
 ## File operations
 

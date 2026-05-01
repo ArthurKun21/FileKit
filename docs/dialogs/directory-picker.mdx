@@ -52,6 +52,10 @@ val launcher = rememberDirectoryPickerLauncher(
 Read more about [dialog settings](/dialogs/dialog-settings) to customize the dialog for each platform.
 
 <Note>
+  On JS and WASM, directory picking uses the browser `webkitdirectory` input behavior. Browsers expose the selected directory as a flat list of files, so FileKit rebuilds a virtual directory tree from their relative paths. Empty directories are not available, and directory `lastModified()` values are synthetic.
+</Note>
+
+<Note>
   **macOS System Appearance**
 
   On macOS, to ensure the directory picker dialog uses the system's theme (light or dark), you may need to set a system property at the start of your application:
