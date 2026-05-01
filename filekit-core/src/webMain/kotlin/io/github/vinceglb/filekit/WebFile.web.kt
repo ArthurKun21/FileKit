@@ -1,0 +1,51 @@
+package io.github.vinceglb.filekit
+
+import kotlin.js.ExperimentalWasmJsInterop
+import kotlin.js.toDouble
+import kotlin.time.Instant
+
+/**
+ * FileKit's web backing type for [PlatformFile].
+ *
+ * It wraps real browser files and virtual directories reconstructed from
+ * browser directory picker results.
+ */
+public sealed class WebFile {
+    @OptIn(ExperimentalWasmJsInterop::class)
+    public class FileWrapper(
+        public val file: BrowserFile,
+        path: String? = file.webkitRelativePath,
+        public val parent: DirectoryWrapper? = null,
+    ) : WebFile() {
+        public val path: String = path?.takeIf { it.isNotBlank() } ?: file.name
+
+        public val name: String
+            get() = file.name
+
+        public val type: String
+            get() = file.type
+
+        public val size: Long
+            get() = file.size.toDouble().toLong()
+
+        @Suppress("REDUNDANT_CALL_OF_CONVERSION_METHOD")
+        public val lastModified: Instant
+            get() = Instant.fromEpochMilliseconds(file.lastModified.toDouble().toLong())
+    }
+
+    public class DirectoryWrapper internal constructor(
+        public val name: String,
+        public val path: String,
+        public val parent: DirectoryWrapper?,
+        internal val mutableChildren: MutableList<WebFile> = mutableListOf(),
+    ) : WebFile() {
+        public val children: List<WebFile>
+            get() = mutableChildren
+
+        public val lastModified: Instant = WEB_DIRECTORY_LAST_MODIFIED
+    }
+}
+
+internal val WEB_DIRECTORY_LAST_MODIFIED: Instant = Instant.fromEpochMilliseconds(0)
+
+public fun WebFile.toPlatformFile(): PlatformFile = PlatformFile(this)

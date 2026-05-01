@@ -1,9 +1,12 @@
 package io.github.vinceglb.filekit.dialogs
 
+import io.github.vinceglb.filekit.BrowserFile
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.WebFile
 import io.github.vinceglb.filekit.utils.toBitsArray
 import org.w3c.files.File
 import org.w3c.files.FilePropertyBag
+import kotlin.js.unsafeCast
 
 internal actual fun createTestPlatformFile(name: String): PlatformFile {
     val bytes = name.encodeToByteArray()
@@ -12,5 +15,5 @@ internal actual fun createTestPlatformFile(name: String): PlatformFile {
         fileName = name,
         options = FilePropertyBag(type = "text/plain"),
     )
-    return PlatformFile(file)
+    return PlatformFile(WebFile.FileWrapper(file.unsafeCast<BrowserFile>()))
 }

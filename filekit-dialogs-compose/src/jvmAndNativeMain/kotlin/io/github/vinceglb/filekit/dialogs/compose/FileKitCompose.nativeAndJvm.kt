@@ -8,51 +8,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
-import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import kotlinx.coroutines.launch
-
-/**
- * Creates and remembers a [PickerResultLauncher] for picking a directory.
- *
- * @param directory The initial directory. Supported on desktop platforms.
- * @param dialogSettings Platform-specific settings for the dialog.
- * @param onResult Callback invoked with the picked directory, or null if cancelled.
- * @return A [PickerResultLauncher] that can be used to launch the picker.
- */
-@Composable
-public actual fun rememberDirectoryPickerLauncher(
-    directory: PlatformFile?,
-    dialogSettings: FileKitDialogSettings,
-    onResult: (PlatformFile?) -> Unit,
-): PickerResultLauncher {
-    // Init FileKit
-    InitFileKit()
-
-    // Coroutine
-    val coroutineScope = rememberCoroutineScope()
-    val stableDialogSettings = rememberStableDialogSettings(dialogSettings)
-
-    // Updated state
-    val currentDirectory by rememberUpdatedState(directory)
-    val currentDialogSettings by rememberUpdatedState(stableDialogSettings)
-    val currentOnResult by rememberUpdatedState(onResult)
-
-    // FileKit launcher
-    val returnedLauncher = remember {
-        PickerResultLauncher {
-            coroutineScope.launch {
-                val result = FileKit.openDirectoryPicker(
-                    directory = currentDirectory,
-                    dialogSettings = currentDialogSettings,
-                )
-                currentOnResult(result)
-            }
-        }
-    }
-
-    return returnedLauncher
-}
 
 @Composable
 internal actual fun rememberPlatformFileSaverLauncher(

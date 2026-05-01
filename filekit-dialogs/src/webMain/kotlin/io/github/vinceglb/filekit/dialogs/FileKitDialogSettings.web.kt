@@ -1,8 +1,8 @@
 package io.github.vinceglb.filekit.dialogs
 
 /**
- * JS implementation of [FileKitDialogSettings].
- * Currently, there are no specific settings for JS file dialogs.
+ * Web implementation of [FileKitDialogSettings].
+ * Currently, there are no specific settings for web file dialogs.
  */
 public actual class FileKitDialogSettings {
     public actual companion object {

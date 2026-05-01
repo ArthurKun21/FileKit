@@ -11,9 +11,6 @@ import io.github.vinceglb.filekit.dialogs.FileKitOpenCameraSettings
 import io.github.vinceglb.filekit.dialogs.openCameraPicker
 import kotlinx.coroutines.launch
 
-@Composable
-internal actual fun InitFileKit() {}
-
 /**
  * Creates and remembers a [PhotoResultLauncher] for taking a picture or video with the camera.
  *
@@ -26,9 +23,6 @@ public actual fun rememberCameraPickerLauncher(
     openCameraSettings: FileKitOpenCameraSettings,
     onResult: (PlatformFile?) -> Unit,
 ): PhotoResultLauncher {
-    // Init FileKit
-    InitFileKit()
-
     // Coroutine
     val coroutineScope = rememberCoroutineScope()
     val stableOpenCameraSettings = rememberStableOpenCameraSettings(openCameraSettings)

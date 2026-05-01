@@ -52,7 +52,7 @@ private const val LAUNCHER_FILE_SINGLE = "file_single"
 private const val LAUNCHER_FILE_MULTIPLE = "file_multiple"
 
 @Composable
-internal actual fun InitFileKit() {
+private fun InitializeAndroidFileKit() {
     if (!LocalInspectionMode.current) {
         val registry = LocalActivityResultRegistryOwner.current?.activityResultRegistry
 
@@ -75,6 +75,8 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
     dialogSettings: FileKitDialogSettings,
     onResult: (ConsumedResult) -> Unit,
 ): PickerResultLauncher {
+    InitializeAndroidFileKit()
+
     val currentType by rememberUpdatedState(type)
     val currentMode by rememberUpdatedState(mode)
     val currentOnConsumed by rememberUpdatedState(onResult)
@@ -273,8 +275,7 @@ public actual fun rememberDirectoryPickerLauncher(
     dialogSettings: FileKitDialogSettings,
     onResult: (PlatformFile?) -> Unit,
 ): PickerResultLauncher {
-    // Init FileKit
-    InitFileKit()
+    InitializeAndroidFileKit()
 
     val currentOnResult by rememberUpdatedState(onResult)
     val currentDirectory by rememberUpdatedState(directory)
@@ -309,6 +310,8 @@ internal actual fun rememberPlatformFileSaverLauncher(
     dialogSettings: FileKitDialogSettings,
     onResult: (PlatformFile?) -> Unit,
 ): SaverResultLauncher {
+    InitializeAndroidFileKit()
+
     val currentOnResult by rememberUpdatedState(onResult)
 
     var hasPendingLaunch by rememberSaveable { mutableStateOf(false) }
@@ -352,8 +355,7 @@ public actual fun rememberCameraPickerLauncher(
     openCameraSettings: FileKitOpenCameraSettings,
     onResult: (PlatformFile?) -> Unit,
 ): PhotoResultLauncher {
-    // Init FileKit
-    InitFileKit()
+    InitializeAndroidFileKit()
 
     // Store the destination file URI string to survive process death.
     // If the user launches again before a callback, latest launch wins.

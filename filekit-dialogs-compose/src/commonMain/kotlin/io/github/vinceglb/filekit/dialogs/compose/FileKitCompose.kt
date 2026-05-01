@@ -26,8 +26,6 @@ public fun <PickerResult, ConsumedResult> rememberFilePickerLauncher(
     dialogSettings: FileKitDialogSettings = FileKitDialogSettings.createDefault(),
     onResult: (ConsumedResult) -> Unit,
 ): PickerResultLauncher {
-    // Init FileKit
-    InitFileKit()
     val stableDialogSettings = rememberStableDialogSettings(dialogSettings)
     return rememberPlatformFilePickerLauncher(
         type = type,
@@ -62,13 +60,25 @@ public fun rememberFilePickerLauncher(
 )
 
 @Composable
-internal expect fun InitFileKit()
-
-@Composable
 internal expect fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLauncher(
     type: FileKitType,
     mode: FileKitMode<PickerResult, ConsumedResult>,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
     onResult: (ConsumedResult) -> Unit,
+): PickerResultLauncher
+
+/**
+ * Creates and remembers a [PickerResultLauncher] for picking a directory.
+ *
+ * @param directory The initial directory. Supported on desktop platforms.
+ * @param dialogSettings Platform-specific settings for the dialog.
+ * @param onResult Callback invoked with the picked directory, or null if cancelled.
+ * @return A [PickerResultLauncher] that can be used to launch the picker.
+ */
+@Composable
+public expect fun rememberDirectoryPickerLauncher(
+    directory: PlatformFile? = null,
+    dialogSettings: FileKitDialogSettings = FileKitDialogSettings.createDefault(),
+    onResult: (PlatformFile?) -> Unit,
 ): PickerResultLauncher

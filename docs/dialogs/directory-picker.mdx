@@ -4,7 +4,7 @@ sidebarTitle: 'Directory picker'
 description: 'Open a folder picker dialog in a Kotlin Multiplatform project'
 ---
 
-<Check>Supported on Android, iOS, macOS and JVM targets</Check>
+<Check>Supported on Android, iOS, macOS, JVM, JS and WASM targets</Check>
 
 ## Quick start
 
@@ -48,6 +48,10 @@ val launcher = rememberDirectoryPickerLauncher(
 </CodeGroup>
 
 Read more about [dialog settings](/dialogs/dialog-settings) to customize the dialog for each platform.
+
+<Note>
+  On JS and WASM, directory picking uses the browser `webkitdirectory` input behavior. Browsers expose the selected directory as a flat list of files, so FileKit rebuilds a virtual directory tree from their relative paths. Empty directories are not available, and directory `lastModified()` values are synthetic.
+</Note>
 
 <Note>
   **macOS System Appearance**

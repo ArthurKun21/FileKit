@@ -22,9 +22,6 @@ public expect fun rememberCameraPickerLauncher(
 public fun rememberShareFileLauncher(
     shareSettings: FileKitShareSettings = FileKitShareSettings.createDefault(),
 ): ShareResultLauncher {
-    // Init FileKit
-    InitFileKit()
-
     // Coroutine
     val coroutineScope = rememberCoroutineScope()
     val stableShareSettings = rememberStableShareSettings(shareSettings)
