@@ -26,6 +26,7 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
     val currentType by rememberUpdatedState(type)
     val currentMode by rememberUpdatedState(mode)
     val currentDirectory by rememberUpdatedState(directory)
+    val currentDialogSettings by rememberUpdatedState(dialogSettings)
     val currentOnConsumed by rememberUpdatedState(onResult)
 
     return remember {
@@ -35,7 +36,7 @@ internal actual fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLau
                     type = currentType,
                     mode = currentMode,
                     directory = currentDirectory,
-                    dialogSettings = dialogSettings,
+                    dialogSettings = currentDialogSettings,
                 )
                 currentMode.consumeResult(result, currentOnConsumed)
             }

@@ -39,9 +39,9 @@ val launcher = rememberFilePickerLauncher(
 </CodeGroup>
 
 <Warning>
-On iOS with Compose Multiplatform 1.10+, avoid launching the gallery picker while a Compose
-modal surface is closing. Dismiss the modal first, then launch FileKit after the modal state
-is closed. [Read more in the file picker documentation.](/dialogs/file-picker)
+On iOS, remember FileKit Compose launchers from a stable/root Compose scope, not
+inside transient surfaces such as `ModalBottomSheet`, dialogs, popups, or
+dropdowns. [Learn more in GitHub issue #547](https://github.com/vinceglb/FileKit/issues/547).
 </Warning>
 
 ### Maximum number of items

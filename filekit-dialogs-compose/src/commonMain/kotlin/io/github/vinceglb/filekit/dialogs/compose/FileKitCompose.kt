@@ -28,11 +28,12 @@ public fun <PickerResult, ConsumedResult> rememberFilePickerLauncher(
 ): PickerResultLauncher {
     // Init FileKit
     InitFileKit()
+    val stableDialogSettings = rememberStableDialogSettings(dialogSettings)
     return rememberPlatformFilePickerLauncher(
         type = type,
         mode = mode,
         directory = directory,
-        dialogSettings = dialogSettings,
+        dialogSettings = stableDialogSettings,
         onResult = onResult,
     )
 }

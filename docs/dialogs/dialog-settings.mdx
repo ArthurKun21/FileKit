@@ -47,7 +47,11 @@ On iOS and macOS, you can configure:
 
 - `title`: Set a custom title for the dialog
 - `canCreateDirectories`: Allow or prevent directory creation in dialogs (default: true)
-- `assetRepresentationMode`: Choose the iOS Photos picker asset representation mode (default: `Automatic`)
+
+On iOS, you can also configure:
+
+- `assetRepresentationMode`: Choose the Photos picker asset representation mode (default: `Automatic`)
+- `presenter`: Set the `UIViewController` used to present native dialogs. If null, FileKit uses the current top-most controller.
 
 ```kotlin
 val settings = FileKitDialogSettings(
