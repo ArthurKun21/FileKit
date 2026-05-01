@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.sample.shared.ui.components.AppDottedBorderCard
@@ -35,7 +36,6 @@ import io.github.vinceglb.filekit.sample.shared.ui.icons.BookOpenText
 import io.github.vinceglb.filekit.sample.shared.ui.icons.File
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Folder
 import io.github.vinceglb.filekit.sample.shared.ui.icons.LucideIcons
-import io.github.vinceglb.filekit.sample.shared.ui.screens.directorypicker.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.sample.shared.ui.theme.AppMaxWidth
 import io.github.vinceglb.filekit.sample.shared.ui.theme.AppTheme
 import io.github.vinceglb.filekit.sample.shared.util.AppUrl
@@ -96,7 +96,6 @@ private fun BookmarksScreen(
     }
 
     val isBookmarkSupported = storage.isSupported
-    val isDirectoryPickerSupported = isBookmarkSupported && directoryPickerLauncher.isSupported
     val primaryButtonText = if (isBookmarkSupported) "Pick File" else "Bookmarks Unavailable"
 
     fun openFilePicker() {
@@ -108,9 +107,6 @@ private fun BookmarksScreen(
     }
 
     fun openDirectoryPicker() {
-        if (!isDirectoryPickerSupported) {
-            return
-        }
         buttonState = AppScreenHeaderButtonState.Loading
         directoryPickerLauncher.launch()
     }
@@ -160,7 +156,6 @@ private fun BookmarksScreen(
                     bookmarkedFileName = bookmarkedFile?.name,
                     bookmarkedDirectoryName = bookmarkedDirectory?.name,
                     isFilePickerSupported = isBookmarkSupported,
-                    isDirectoryPickerSupported = isDirectoryPickerSupported,
                     onPickFile = ::openFilePicker,
                     onPickDirectory = ::openDirectoryPicker,
                     onClearFile = { clearBookmark(BookmarkKind.File) },
@@ -197,7 +192,6 @@ private fun BookmarkSettingsCard(
     bookmarkedFileName: String?,
     bookmarkedDirectoryName: String?,
     isFilePickerSupported: Boolean,
-    isDirectoryPickerSupported: Boolean,
     onPickFile: () -> Unit,
     onPickDirectory: () -> Unit,
     onClearFile: () -> Unit,
@@ -221,7 +215,6 @@ private fun BookmarkSettingsCard(
                 value = bookmarkedDirectoryName,
                 placeholder = "No folder bookmarked",
                 icon = LucideIcons.Folder,
-                enabled = isDirectoryPickerSupported,
                 onClick = onPickDirectory,
                 onClear = onClearDirectory,
             )

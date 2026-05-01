@@ -27,6 +27,7 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitPickerState
 import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.sample.shared.ui.components.AppDottedBorderCard
@@ -44,7 +45,6 @@ import io.github.vinceglb.filekit.sample.shared.ui.icons.CheckCheck
 import io.github.vinceglb.filekit.sample.shared.ui.icons.File
 import io.github.vinceglb.filekit.sample.shared.ui.icons.Home
 import io.github.vinceglb.filekit.sample.shared.ui.icons.LucideIcons
-import io.github.vinceglb.filekit.sample.shared.ui.screens.directorypicker.rememberDirectoryPickerLauncher
 import io.github.vinceglb.filekit.sample.shared.ui.theme.AppMaxWidth
 import io.github.vinceglb.filekit.sample.shared.ui.theme.AppTheme
 import io.github.vinceglb.filekit.sample.shared.ui.theme.geistMonoFontFamily
@@ -193,7 +193,7 @@ private fun FilePickerScreen(
                     pickerMaxItems = pickerMaxItems,
                     customExtensions = customExtensions,
                     startDirectoryName = startDirectory?.name,
-                    isStartDirectorySupported = startDirectoryLauncher.isSupported,
+                    isStartDirectorySupported = true,
                     dialogSettingsState = dialogSettingsState,
                     onPickerModeChange = { pickerMode = it },
                     onMaxItemsChange = { pickerMaxItems = it },

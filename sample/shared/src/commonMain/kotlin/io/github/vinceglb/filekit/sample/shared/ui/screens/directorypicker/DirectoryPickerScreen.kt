@@ -124,17 +124,6 @@ private fun DirectoryPickerScreen(
             }
 
             if (pickedDirectories.isNotEmpty()) {
-                item {
-                    Text(
-                        text = "Picked Directories Content",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .sizeIn(maxWidth = AppMaxWidth)
-                            .padding(top = 8.dp),
-                    )
-                }
-
                 pickedDirectories.forEach { directory ->
                     item {
                         AppDottedBorderCard(
