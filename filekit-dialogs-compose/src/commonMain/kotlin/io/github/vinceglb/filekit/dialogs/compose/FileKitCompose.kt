@@ -26,8 +26,6 @@ public fun <PickerResult, ConsumedResult> rememberFilePickerLauncher(
     dialogSettings: FileKitDialogSettings = FileKitDialogSettings.createDefault(),
     onResult: (ConsumedResult) -> Unit,
 ): PickerResultLauncher {
-    // Init FileKit
-    InitFileKit()
     return rememberPlatformFilePickerLauncher(
         type = type,
         mode = mode,
@@ -59,9 +57,6 @@ public fun rememberFilePickerLauncher(
     dialogSettings = dialogSettings,
     onResult = onResult,
 )
-
-@Composable
-internal expect fun InitFileKit()
 
 @Composable
 internal expect fun <PickerResult, ConsumedResult> rememberPlatformFilePickerLauncher(

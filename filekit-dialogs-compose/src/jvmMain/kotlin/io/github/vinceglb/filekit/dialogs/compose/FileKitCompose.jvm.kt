@@ -58,9 +58,6 @@ public fun WindowScope.rememberFileSaverLauncher(
     onResult = onResult,
 )
 
-@Composable
-internal actual fun InitFileKit() {}
-
 private fun injectDialogSettings(
     dialogSettings: FileKitDialogSettings?,
     window: Window,

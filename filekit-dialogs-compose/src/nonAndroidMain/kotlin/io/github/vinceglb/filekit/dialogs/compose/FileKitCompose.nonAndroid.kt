@@ -28,8 +28,6 @@ public actual fun rememberDirectoryPickerLauncher(
     dialogSettings: FileKitDialogSettings,
     onResult: (PlatformFile?) -> Unit,
 ): PickerResultLauncher {
-    InitFileKit()
-
     val coroutineScope = rememberCoroutineScope()
 
     val currentDirectory by rememberUpdatedState(directory)

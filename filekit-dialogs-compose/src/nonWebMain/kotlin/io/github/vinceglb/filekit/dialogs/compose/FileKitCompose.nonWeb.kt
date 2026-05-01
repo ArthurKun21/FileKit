@@ -16,8 +16,6 @@ public fun rememberFileSaverLauncher(
     dialogSettings: FileKitDialogSettings,
     onResult: (PlatformFile?) -> Unit,
 ): SaverResultLauncher {
-    // Init FileKit
-    InitFileKit()
     return rememberPlatformFileSaverLauncher(
         dialogSettings = dialogSettings,
         onResult = onResult,
