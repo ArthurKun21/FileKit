@@ -193,7 +193,7 @@ private fun FilePickerScreen(
                     pickerMaxItems = pickerMaxItems,
                     customExtensions = customExtensions,
                     startDirectoryName = startDirectory?.name,
-                    isStartDirectorySupported = true,
+                    isStartDirectorySupported = isFilePickerStartDirectorySupported,
                     dialogSettingsState = dialogSettingsState,
                     onPickerModeChange = { pickerMode = it },
                     onMaxItemsChange = { pickerMaxItems = it },

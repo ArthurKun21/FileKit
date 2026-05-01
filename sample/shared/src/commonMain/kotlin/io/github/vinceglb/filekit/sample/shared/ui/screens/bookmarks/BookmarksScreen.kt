@@ -96,6 +96,7 @@ private fun BookmarksScreen(
     }
 
     val isBookmarkSupported = storage.isSupported
+    val isDirectoryPickerSupported = isBookmarkSupported
     val primaryButtonText = if (isBookmarkSupported) "Pick File" else "Bookmarks Unavailable"
 
     fun openFilePicker() {
@@ -107,6 +108,9 @@ private fun BookmarksScreen(
     }
 
     fun openDirectoryPicker() {
+        if (!isDirectoryPickerSupported) {
+            return
+        }
         buttonState = AppScreenHeaderButtonState.Loading
         directoryPickerLauncher.launch()
     }
@@ -156,6 +160,7 @@ private fun BookmarksScreen(
                     bookmarkedFileName = bookmarkedFile?.name,
                     bookmarkedDirectoryName = bookmarkedDirectory?.name,
                     isFilePickerSupported = isBookmarkSupported,
+                    isDirectoryPickerSupported = isDirectoryPickerSupported,
                     onPickFile = ::openFilePicker,
                     onPickDirectory = ::openDirectoryPicker,
                     onClearFile = { clearBookmark(BookmarkKind.File) },
@@ -192,6 +197,7 @@ private fun BookmarkSettingsCard(
     bookmarkedFileName: String?,
     bookmarkedDirectoryName: String?,
     isFilePickerSupported: Boolean,
+    isDirectoryPickerSupported: Boolean,
     onPickFile: () -> Unit,
     onPickDirectory: () -> Unit,
     onClearFile: () -> Unit,
@@ -215,6 +221,7 @@ private fun BookmarkSettingsCard(
                 value = bookmarkedDirectoryName,
                 placeholder = "No folder bookmarked",
                 icon = LucideIcons.Folder,
+                enabled = isDirectoryPickerSupported,
                 onClick = onPickDirectory,
                 onClear = onClearDirectory,
             )
