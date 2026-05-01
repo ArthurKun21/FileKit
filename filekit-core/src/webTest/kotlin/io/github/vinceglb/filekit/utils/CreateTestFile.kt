@@ -5,4 +5,5 @@ import io.github.vinceglb.filekit.PlatformFile
 expect fun createTestFile(
     name: String,
     content: String,
+    relativePath: String? = null,
 ): PlatformFile

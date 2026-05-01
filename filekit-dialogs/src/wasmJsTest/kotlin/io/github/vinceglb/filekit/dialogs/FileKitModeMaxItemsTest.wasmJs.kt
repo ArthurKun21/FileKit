@@ -1,7 +1,8 @@
 package io.github.vinceglb.filekit.dialogs
 
-import io.github.vinceglb.filekit.FileExt
+import io.github.vinceglb.filekit.BrowserFile
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.WebFile
 import io.github.vinceglb.filekit.utils.toJsArray
 import org.w3c.files.File
 import org.w3c.files.FilePropertyBag
@@ -10,5 +11,5 @@ import org.w3c.files.FilePropertyBag
 internal actual fun createTestPlatformFile(name: String): PlatformFile {
     val jsArray = name.encodeToByteArray().toJsArray()
     val file = File(jsArray, name, FilePropertyBag(type = "text/plain"))
-    return PlatformFile(file.unsafeCast<FileExt>())
+    return PlatformFile(WebFile.FileWrapper(file.unsafeCast<BrowserFile>()))
 }

@@ -1,7 +1,7 @@
 package io.github.vinceglb.filekit.dialogs
 
-import io.github.vinceglb.filekit.FileExt
-import io.github.vinceglb.filekit.FileHandleFile
+import io.github.vinceglb.filekit.BrowserFile
+import io.github.vinceglb.filekit.WebFile
 import kotlinx.browser.document
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -17,7 +17,7 @@ internal actual suspend fun platformOpenFilePickerWeb(
     type: FileKitType,
     multipleMode: Boolean, // select multiple files
     directoryMode: Boolean, // select a directory
-): List<FileHandleFile>? {
+): List<WebFile.FileWrapper>? {
     val files = withContext(Dispatchers.Default) {
         suspendCoroutine { continuation ->
             // Create input element
@@ -60,10 +60,10 @@ internal actual suspend fun platformOpenFilePickerWeb(
                         ?.unsafeCast<HTMLInputElementExt>()
                         ?.files
                         ?.asList()
-                        ?.map { it.unsafeCast<FileExt>() }
+                        ?.map { it.unsafeCast<BrowserFile>() }
 
                     // Return the result
-                    val result = files?.map { FileHandleFile(it) }
+                    val result = files?.map { WebFile.FileWrapper(it) }
                     continuation.resume(result)
                 } catch (e: Throwable) {
                     continuation.resumeWithException(e)
