@@ -31,9 +31,11 @@ public actual fun rememberDirectoryPickerLauncher(
 
     // Coroutine
     val coroutineScope = rememberCoroutineScope()
+    val stableDialogSettings = rememberStableDialogSettings(dialogSettings)
 
     // Updated state
     val currentDirectory by rememberUpdatedState(directory)
+    val currentDialogSettings by rememberUpdatedState(stableDialogSettings)
     val currentOnResult by rememberUpdatedState(onResult)
 
     // FileKit launcher
@@ -42,7 +44,7 @@ public actual fun rememberDirectoryPickerLauncher(
             coroutineScope.launch {
                 val result = FileKit.openDirectoryPicker(
                     directory = currentDirectory,
-                    dialogSettings = dialogSettings,
+                    dialogSettings = currentDialogSettings,
                 )
                 currentOnResult(result)
             }
@@ -58,6 +60,8 @@ internal actual fun rememberPlatformFileSaverLauncher(
     onResult: (PlatformFile?) -> Unit,
 ): SaverResultLauncher {
     val coroutineScope = rememberCoroutineScope()
+    val stableDialogSettings = rememberStableDialogSettings(dialogSettings)
+    val currentDialogSettings by rememberUpdatedState(stableDialogSettings)
     val currentOnResult by rememberUpdatedState(onResult)
 
     return remember {
@@ -67,7 +71,7 @@ internal actual fun rememberPlatformFileSaverLauncher(
                     suggestedName = suggestedName,
                     extension = extension,
                     directory = directory,
-                    dialogSettings = dialogSettings,
+                    dialogSettings = currentDialogSettings,
                 )
                 currentOnResult(result)
             }

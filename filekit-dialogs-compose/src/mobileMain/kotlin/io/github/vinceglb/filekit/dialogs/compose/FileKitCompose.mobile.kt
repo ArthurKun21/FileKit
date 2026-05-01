@@ -1,8 +1,10 @@
 package io.github.vinceglb.filekit.dialogs.compose
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitOpenCameraSettings
@@ -25,6 +27,8 @@ public fun rememberShareFileLauncher(
 
     // Coroutine
     val coroutineScope = rememberCoroutineScope()
+    val stableShareSettings = rememberStableShareSettings(shareSettings)
+    val currentShareSettings by rememberUpdatedState(stableShareSettings)
 
     // FileKit
     val fileKit = remember { FileKit }
@@ -33,7 +37,7 @@ public fun rememberShareFileLauncher(
     val returnedLauncher = remember {
         ShareResultLauncher { files ->
             coroutineScope.launch {
-                fileKit.shareFile(files, shareSettings)
+                fileKit.shareFile(files, currentShareSettings)
             }
         }
     }
