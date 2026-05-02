@@ -923,6 +923,10 @@ internal fun Uri.listDocuments(): List<PlatformFile> {
 }
 
 private fun Uri.findChildDocumentInfo(): AndroidDocumentInfo? {
+    if (!isTreeUriCompat()) {
+        return null
+    }
+
     val (parentDocumentId, childName) = parentDocumentIdAndNameOrNull() ?: return null
 
     return findChildDocumentInfo(
@@ -935,7 +939,11 @@ private fun Uri.findChildDocumentInfo(
     parentDocumentId: String,
     childName: String,
 ): AndroidDocumentInfo? {
-    val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(this, parentDocumentId)
+    val childrenUri = try {
+        DocumentsContract.buildChildDocumentsUriUsingTree(this, parentDocumentId)
+    } catch (_: IllegalArgumentException) {
+        return null
+    }
 
     return queryDocumentInfos(childrenUri).firstOrNull { it.name == childName }
 }

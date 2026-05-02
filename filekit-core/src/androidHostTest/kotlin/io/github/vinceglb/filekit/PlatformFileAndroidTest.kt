@@ -438,6 +438,23 @@ class PlatformFileAndroidTest {
     }
 
     @Test
+    fun PlatformFile_createDocumentUri_isRegularFileWithoutTreeUriCrash() {
+        val savedUri = Uri.parse(
+            "content://com.android.externalstorage.documents/document/primary%3ADownload%2Fbonjour%2Fdocument.pdf",
+        )
+        ShadowContentResolver.registerProviderInternal(
+            "com.android.externalstorage.documents",
+            createNestedTreeContentProvider(),
+        )
+
+        val file = PlatformFile(savedUri)
+
+        assertTrue(file.exists())
+        assertFalse(file.isDirectory())
+        assertTrue(file.isRegularFile())
+    }
+
+    @Test
     @Config(sdk = [23])
     fun PlatformFile_fromBookmarkData_bookmarkedTreeUriOnApi23_restoresAccessibleFile() {
         val treeUri = Uri.parse("content://com.android.externalstorage.documents/tree/primary%3ADocuments")
@@ -487,6 +504,11 @@ private class NestedTreeContentProvider : ContentProvider() {
             false,
         ),
         "primary:Documents/Notes/note.txt" to TestDocument("primary:Documents/Notes/note.txt", "note.txt", false),
+        "primary:Download/bonjour/document.pdf" to TestDocument(
+            "primary:Download/bonjour/document.pdf",
+            "document.pdf",
+            false,
+        ),
     )
 
     override fun onCreate(): Boolean = true
