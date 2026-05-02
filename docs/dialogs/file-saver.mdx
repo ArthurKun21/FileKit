@@ -19,7 +19,7 @@ Here's a basic example:
 // Open file saver dialog
 val file = FileKit.openFileSaver(
     suggestedName = "document",
-    extension = "pdf"
+    defaultExtension = "pdf",
 )
 
 // Write your data to the file
@@ -39,7 +39,12 @@ val launcher = rememberFileSaverLauncher { file ->
     }
 }
 
-Button(onClick = { launcher.launch("document", "pdf") }) {
+Button(onClick = {
+    launcher.launch(
+        suggestedName = "document",
+        defaultExtension = "pdf",
+    )
+}) {
     Text("Save file")
 }
 ```
@@ -50,7 +55,8 @@ Button(onClick = { launcher.launch("document", "pdf") }) {
 The file saver can be customized with several parameters:
 
 - `suggestedName`: The default name for the file without extension
-- `extension`: The file extension without the dot (e.g., "pdf", "txt")
+- `defaultExtension`: The default file extension without the dot (e.g., "pdf", "txt")
+- `allowedExtensions`: The allowed save extensions without dots (e.g., `setOf("txt", "md")`). This is a native dialog hint, not a validation guarantee.
 - `directory`: The starting directory for the save dialog
 - `dialogSettings`: Platform-specific settings for customizing the dialog behavior
 
@@ -58,7 +64,8 @@ The file saver can be customized with several parameters:
 ```kotlin filekit-dialogs
 val file = FileKit.openFileSaver(
     suggestedName = "my-document",
-    extension = "pdf",
+    defaultExtension = "pdf",
+    allowedExtensions = setOf("pdf", "txt"),
     directory = PlatformFile("/custom/initial/path"),
     dialogSettings = FileKitDialogSettings.createDefault()
 )
@@ -66,15 +73,21 @@ val file = FileKit.openFileSaver(
 
 ```kotlin filekit-dialogs-compose
 val launcher = rememberFileSaverLauncher(
-    directory = PlatformFile("/custom/initial/path"),
     dialogSettings = FileKitDialogSettings.createDefault()
 ) { file ->
     // Handle the selected save location
 }
 
-launcher.launch("my-document", "pdf")
+launcher.launch(
+    suggestedName = "my-document",
+    defaultExtension = "pdf",
+    directory = PlatformFile("/custom/initial/path"),
+    allowedExtensions = setOf("pdf", "txt"),
+)
 ```
 </CodeGroup>
+
+Use `defaultExtension` for the default file name and default extension. Use `allowedExtensions` when the native save dialog should offer specific save types. Filtering is applied where the platform supports it; apps that require a specific output format should still validate the returned file extension.
 
 Read more about [dialog settings](/dialogs/dialog-settings) to customize the dialog for each platform.
 
@@ -83,7 +96,7 @@ Read more about [dialog settings](/dialogs/dialog-settings) to customize the dia
 The file saver returns a `PlatformFile` object representing the selected save location. You can write data to this file using the `write()` extension function:
 
 ```kotlin
-val file = FileKit.openFileSaver(suggestedName = "document", extension = "pdf")
+val file = FileKit.openFileSaver(suggestedName = "document", defaultExtension = "pdf")
 
 if (file != null) {
     // Write bytes to the file

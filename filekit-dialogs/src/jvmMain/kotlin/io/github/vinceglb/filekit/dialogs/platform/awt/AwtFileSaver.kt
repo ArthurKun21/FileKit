@@ -13,7 +13,8 @@ import kotlin.coroutines.resume
 internal object AwtFileSaver {
     suspend fun saveFile(
         suggestedName: String,
-        extension: String?,
+        defaultExtension: String?,
+        allowedExtensions: Set<String>?,
         directory: PlatformFile?,
         dialogSettings: FileKitDialogSettings?,
     ): File? = suspendCancellableCoroutine { continuation ->
@@ -44,9 +45,15 @@ internal object AwtFileSaver {
         // Set initial directory
         directory?.let { dialog.directory = directory.path }
 
+        allowedExtensions?.let { extensions ->
+            dialog.filenameFilter = java.io.FilenameFilter { _, name ->
+                extensions.any { extension -> name.endsWith(".$extension", ignoreCase = true) }
+            }
+        }
+
         // Set file name
         dialog.file = when {
-            extension != null -> "$suggestedName.$extension"
+            defaultExtension != null -> "$suggestedName.$defaultExtension"
             else -> suggestedName
         }
 

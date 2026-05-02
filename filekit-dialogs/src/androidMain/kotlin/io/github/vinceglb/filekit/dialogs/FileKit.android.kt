@@ -60,24 +60,35 @@ internal actual suspend fun FileKit.platformOpenFilePicker(
  * @param dialogSettings Platform-specific settings for the dialog.
  * @return The path where the file should be saved as a [PlatformFile], or null if cancelled.
  */
-public actual suspend fun FileKit.openFileSaver(
+internal actual suspend fun FileKit.platformOpenFileSaver(
     suggestedName: String,
-    extension: String?,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? {
     val registry = FileKit.registry
-    val normalizedExtension = FileKitAndroidDialogsInternal.normalizeFileSaverExtension(extension)
-    val mimeType = FileKitAndroidDialogsInternal.getMimeType(normalizedExtension)
-    val contract = ActivityResultContracts.CreateDocument(mimeType)
+    val normalizedDefaultExtension = FileKitAndroidDialogsInternal.normalizeFileSaverExtension(defaultExtension)
+    val normalizedAllowedExtensions = FileKitAndroidDialogsInternal.normalizeFileSaverExtensions(allowedExtensions)
+    val allowedMimeTypes = normalizedAllowedExtensions?.let(FileKitAndroidDialogsInternal::getMimeTypes)
+    val mimeType = when {
+        allowedMimeTypes != null && allowedMimeTypes.size > 1 -> "*/*"
+        allowedMimeTypes != null -> allowedMimeTypes.first()
+        else -> FileKitAndroidDialogsInternal.getMimeType(normalizedDefaultExtension)
+    }
+    val contract = CreateDocumentDynamicContract()
     val fileName = FileKitAndroidDialogsInternal.buildFileSaverSuggestedName(
         suggestedName = suggestedName,
-        extension = normalizedExtension,
+        extension = normalizedDefaultExtension,
     )
     val uri = awaitActivityResult(
         registry = registry,
         contract = contract,
-        input = fileName,
+        input = CreateDocumentInput(
+            mimeType = mimeType,
+            fileName = fileName,
+            allowedMimeTypes = allowedMimeTypes,
+        ),
     )
     return uri?.let(::PlatformFile)
 }
@@ -486,6 +497,29 @@ private suspend fun <I, O> awaitActivityResult(
             }
         }
     }
+}
+
+private class CreateDocumentInput(
+    val mimeType: String,
+    val fileName: String,
+    val allowedMimeTypes: Array<String>?,
+)
+
+private class CreateDocumentDynamicContract : ActivityResultContract<CreateDocumentInput, Uri?>() {
+    override fun createIntent(
+        context: Context,
+        input: CreateDocumentInput,
+    ): Intent = ActivityResultContracts
+        .CreateDocument(input.mimeType)
+        .createIntent(context, input.fileName)
+        .apply {
+            input.allowedMimeTypes?.let { putExtra(Intent.EXTRA_MIME_TYPES, it) }
+        }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): Uri? = ActivityResultContracts
+        .CreateDocument(
+            "*/*",
+        ).parseResult(resultCode, intent)
 }
 
 internal object FileKitDialog {

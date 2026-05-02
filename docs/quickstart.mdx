@@ -101,7 +101,11 @@ FileKit makes it easy to save a file. Read more about [file saver](/dialogs/file
 val contentToSave = "Hello FileKit!"
 
 // Open save dialog to let user choose location
-val file = FileKit.openFileSaver(suggestedName = "document", extension = "txt")
+val file = FileKit.openFileSaver(
+    suggestedName = "document",
+    defaultExtension = "txt",
+    allowedExtensions = setOf("txt", "md"),
+)
 
 // Write content to the file
 file?.writeString(contentToSave)
@@ -115,7 +119,13 @@ val launcher = rememberFileSaverLauncher { file ->
 }
 
 // Display a button to open the file saver dialog
-Button(onClick = { launcher.launch("document", "txt") }) {
+Button(onClick = {
+    launcher.launch(
+        suggestedName = "document",
+        defaultExtension = "txt",
+        allowedExtensions = setOf("txt", "md"),
+    )
+}) {
     Text("Save a file")
 }
 

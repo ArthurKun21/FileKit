@@ -21,12 +21,14 @@ internal actual fun rememberFileSaverLauncher(
 
             override fun launch(
                 suggestedName: String,
-                extension: String?,
+                defaultExtension: String?,
+                allowedExtensions: Set<String>?,
                 directory: PlatformFile?,
             ) {
                 launcher.launch(
                     suggestedName = suggestedName,
-                    extension = extension,
+                    defaultExtension = defaultExtension,
+                    allowedExtensions = allowedExtensions,
                     directory = directory,
                 )
             }

@@ -96,7 +96,11 @@ val directory = FileKit.openDirectoryPicker()
 
 // Save a file
 val contentToSave = "Hello FileKit!"
-val file = FileKit.openFileSaver(suggestedName = "document", extension = "txt")
+val file = FileKit.openFileSaver(
+    suggestedName = "document",
+    defaultExtension = "txt",
+    allowedExtensions = setOf("txt", "md"),
+)
 file?.writeString(contentToSave)
 
 // Work with files

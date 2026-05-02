@@ -6,17 +6,70 @@ import io.github.vinceglb.filekit.PlatformFile
 /**
  * Opens a file saver dialog.
  *
+ * [defaultExtension] controls the suggested/default extension for the generated
+ * file name. [allowedExtensions] controls native save dialog filters where the
+ * platform supports them; apps that require a specific output format should
+ * still validate the returned file extension.
+ *
  * @param suggestedName The suggested name for the file.
- * @param extension The file extension (optional).
+ * @param defaultExtension The default file extension without the dot.
+ * @param allowedExtensions The allowed file extensions without dots.
  * @param directory The initial directory. Supported on desktop platforms.
  * @param dialogSettings Platform-specific settings for the dialog.
  * @return The path where the file should be saved as a [PlatformFile], or null if cancelled.
  */
-public expect suspend fun FileKit.openFileSaver(
+public suspend fun FileKit.openFileSaver(
+    suggestedName: String,
+    defaultExtension: String? = null,
+    allowedExtensions: Set<String>? = null,
+    directory: PlatformFile? = null,
+    dialogSettings: FileKitDialogSettings = FileKitDialogSettings.createDefault(),
+): PlatformFile? = platformOpenFileSaver(
+    suggestedName = suggestedName,
+    defaultExtension = defaultExtension,
+    allowedExtensions = allowedExtensions,
+    directory = directory,
+    dialogSettings = dialogSettings,
+)
+
+/**
+ * Opens a file saver dialog.
+ *
+ * @param suggestedName The suggested name for the file.
+ * @param extension The default file extension without the dot.
+ * @param directory The initial directory. Supported on desktop platforms.
+ * @param dialogSettings Platform-specific settings for the dialog.
+ * @return The path where the file should be saved as a [PlatformFile], or null if cancelled.
+ */
+@Deprecated(
+    message = "Use defaultExtension. The extension parameter is a default extension hint, not a filter.",
+    replaceWith = ReplaceWith(
+        "openFileSaver(" +
+            "suggestedName = suggestedName, " +
+            "defaultExtension = extension, " +
+            "directory = directory, " +
+            "dialogSettings = dialogSettings" +
+            ")",
+    ),
+)
+public suspend fun FileKit.openFileSaver(
     suggestedName: String,
     extension: String? = null,
     directory: PlatformFile? = null,
     dialogSettings: FileKitDialogSettings = FileKitDialogSettings.createDefault(),
+): PlatformFile? = openFileSaver(
+    suggestedName = suggestedName,
+    defaultExtension = extension,
+    directory = directory,
+    dialogSettings = dialogSettings,
+)
+
+internal expect suspend fun FileKit.platformOpenFileSaver(
+    suggestedName: String,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
+    directory: PlatformFile?,
+    dialogSettings: FileKitDialogSettings,
 ): PlatformFile?
 
 /**

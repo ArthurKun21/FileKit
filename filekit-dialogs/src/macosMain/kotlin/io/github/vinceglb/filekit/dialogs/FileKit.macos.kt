@@ -65,15 +65,17 @@ public actual suspend fun FileKit.openDirectoryPicker(
  * @param dialogSettings Platform-specific settings for the dialog.
  * @return The path where the file should be saved as a [PlatformFile], or null if canceled.
  */
-public actual suspend fun FileKit.openFileSaver(
+internal actual suspend fun FileKit.platformOpenFileSaver(
     suggestedName: String,
-    extension: String?,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? {
     // Create an NSSavePanel
     val nsSavePanel = NSSavePanel()
-    val normalizedExtension = normalizeFileSaverExtension(extension)
+    val normalizedDefaultExtension = normalizeFileSaverExtension(defaultExtension)
+    val normalizedAllowedExtensions = normalizeFileSaverExtensions(allowedExtensions)
 
     // Set the initial directory
     directory?.let { nsSavePanel.directoryURL = NSURL.fileURLWithPath(it.path) }
@@ -81,13 +83,12 @@ public actual suspend fun FileKit.openFileSaver(
     // Set the file name
     nsSavePanel.nameFieldStringValue = buildFileSaverSuggestedName(
         suggestedName = suggestedName,
-        extension = normalizedExtension,
+        extension = normalizedDefaultExtension,
     )
 
-    // Set the file extension
-    normalizedExtension?.let {
-        nsSavePanel.allowedFileTypes = listOf(it)
-    }
+    // Set the file extension filters
+    val fileTypes = normalizedAllowedExtensions ?: normalizedDefaultExtension?.let { setOf(it) }
+    fileTypes?.let { nsSavePanel.allowedFileTypes = it.toList() }
 
     // Accept the creation of directories
     nsSavePanel.canCreateDirectories = dialogSettings.canCreateDirectories

@@ -37,6 +37,10 @@ public object FileKitAndroidDialogsInternal {
         io.github.vinceglb.filekit.dialogs
             .normalizeFileSaverExtension(extension)
 
+    public fun normalizeFileSaverExtensions(extensions: Set<String>?): Set<String>? =
+        io.github.vinceglb.filekit.dialogs
+            .normalizeFileSaverExtensions(extensions)
+
     public fun buildFileSaverSuggestedName(
         suggestedName: String,
         extension: String?,

@@ -22,11 +22,12 @@ internal actual fun rememberPlatformFileSaverLauncher(
     val currentOnResult by rememberUpdatedState(onResult)
 
     return remember {
-        SaverResultLauncher { suggestedName, extension, directory ->
+        SaverResultLauncher { suggestedName, defaultExtension, allowedExtensions, directory ->
             coroutineScope.launch {
                 val result = FileKit.openFileSaver(
                     suggestedName = suggestedName,
-                    extension = extension,
+                    defaultExtension = defaultExtension,
+                    allowedExtensions = allowedExtensions,
                     directory = directory,
                     dialogSettings = currentDialogSettings,
                 )
