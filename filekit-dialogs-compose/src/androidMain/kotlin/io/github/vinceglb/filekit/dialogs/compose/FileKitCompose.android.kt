@@ -745,7 +745,8 @@ private class CreateDocumentDynamicContract : ActivityResultContract<CreateDocum
     override fun createIntent(
         context: Context,
         input: CreateDocumentInput,
-    ): Intent = ActivityResultContracts.CreateDocument(input.mimeType)
+    ): Intent = ActivityResultContracts
+        .CreateDocument(input.mimeType)
         .createIntent(context, input.fileName)
         .apply {
             input.allowedMimeTypes?.let { putExtra(Intent.EXTRA_MIME_TYPES, it) }

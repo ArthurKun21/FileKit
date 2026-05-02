@@ -129,7 +129,8 @@ internal class XdgFilePickerPortal : PlatformFilePicker {
                 else -> Variant(suggestedName)
             }
 
-            allowedExtensions?.let { options["filters"] = createFilterOption(it) }
+            val filterExtensions = allowedExtensions ?: defaultExtension?.let { setOf(it) }
+            filterExtensions?.let { options["filters"] = createFilterOption(it) }
             directory?.let { options["current_folder"] = createCurrentFolderOption(it) }
 
             val deferredResult = registerResponseHandler(connection, handleToken)
