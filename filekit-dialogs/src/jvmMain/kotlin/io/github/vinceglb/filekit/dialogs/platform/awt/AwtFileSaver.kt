@@ -45,7 +45,8 @@ internal object AwtFileSaver {
         // Set initial directory
         directory?.let { dialog.directory = directory.path }
 
-        allowedExtensions?.let { extensions ->
+        val filterExtensions = allowedExtensions ?: defaultExtension?.let { setOf(it) }
+        filterExtensions?.let { extensions ->
             dialog.filenameFilter = java.io.FilenameFilter { _, name ->
                 extensions.any { extension -> name.endsWith(".$extension", ignoreCase = true) }
             }
