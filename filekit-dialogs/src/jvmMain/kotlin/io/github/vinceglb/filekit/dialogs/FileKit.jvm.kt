@@ -75,16 +75,19 @@ public actual suspend fun FileKit.openDirectoryPicker(
  * @param dialogSettings Platform-specific settings for the dialog.
  * @return The path where the file should be saved as a [PlatformFile], or null if cancelled.
  */
-public actual suspend fun FileKit.openFileSaver(
+internal actual suspend fun FileKit.platformOpenFileSaver(
     suggestedName: String,
-    extension: String?,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? = withContext(Dispatchers.IO) {
-    val normalizedExtension = normalizeFileSaverExtension(extension)
+    val normalizedDefaultExtension = normalizeFileSaverExtension(defaultExtension)
+    val normalizedAllowedExtensions = normalizeFileSaverExtensions(allowedExtensions)
     val result = PlatformFilePicker.current.openFileSaver(
         suggestedName = suggestedName,
-        extension = normalizedExtension,
+        defaultExtension = normalizedDefaultExtension,
+        allowedExtensions = normalizedAllowedExtensions,
         directory = directory,
         dialogSettings = dialogSettings,
     )

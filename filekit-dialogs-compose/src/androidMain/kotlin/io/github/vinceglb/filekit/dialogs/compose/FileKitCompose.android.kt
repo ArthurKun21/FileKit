@@ -324,19 +324,27 @@ internal actual fun rememberPlatformFileSaverLauncher(
     }
 
     return remember(launcher) {
-        SaverResultLauncher { suggestedName, extension, directory ->
-            val normalizedExtension = FileKitAndroidDialogsInternal.normalizeFileSaverExtension(extension)
+        SaverResultLauncher { suggestedName, defaultExtension, allowedExtensions, directory ->
+            val normalizedDefaultExtension = FileKitAndroidDialogsInternal.normalizeFileSaverExtension(defaultExtension)
+            val normalizedAllowedExtensions = FileKitAndroidDialogsInternal
+                .normalizeFileSaverExtensions(allowedExtensions)
+            val allowedMimeTypes = normalizedAllowedExtensions?.let(FileKitAndroidDialogsInternal::getMimeTypes)
             val fileName = FileKitAndroidDialogsInternal.buildFileSaverSuggestedName(
                 suggestedName = suggestedName,
-                extension = normalizedExtension,
+                extension = normalizedDefaultExtension,
             )
-            val mimeType = FileKitAndroidDialogsInternal.getMimeType(normalizedExtension)
+            val mimeType = when {
+                allowedMimeTypes != null && allowedMimeTypes.size > 1 -> "*/*"
+                allowedMimeTypes != null -> allowedMimeTypes.first()
+                else -> FileKitAndroidDialogsInternal.getMimeType(normalizedDefaultExtension)
+            }
 
             hasPendingLaunch = true
             launcher.launch(
                 CreateDocumentInput(
                     mimeType = mimeType,
                     fileName = fileName,
+                    allowedMimeTypes = allowedMimeTypes,
                 ),
             )
         }
@@ -730,13 +738,19 @@ private class DynamicPickMultipleVisualMediaContract : ActivityResultContract<Dy
 private data class CreateDocumentInput(
     val mimeType: String,
     val fileName: String,
+    val allowedMimeTypes: Array<String>?,
 )
 
 private class CreateDocumentDynamicContract : ActivityResultContract<CreateDocumentInput, Uri?>() {
     override fun createIntent(
         context: Context,
         input: CreateDocumentInput,
-    ): Intent = ActivityResultContracts.CreateDocument(input.mimeType).createIntent(context, input.fileName)
+    ): Intent = ActivityResultContracts
+        .CreateDocument(input.mimeType)
+        .createIntent(context, input.fileName)
+        .apply {
+            input.allowedMimeTypes?.let { putExtra(Intent.EXTRA_MIME_TYPES, it) }
+        }
 
     override fun parseResult(resultCode: Int, intent: Intent?): Uri? = ActivityResultContracts
         .CreateDocument(

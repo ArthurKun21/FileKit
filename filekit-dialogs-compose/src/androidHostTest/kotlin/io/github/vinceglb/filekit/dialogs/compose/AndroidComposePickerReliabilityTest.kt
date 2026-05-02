@@ -343,6 +343,10 @@ class AndroidComposePickerReliabilityTest {
     fun FileSaverName_normalizesAndBuildsSuggestedName() {
         assertEquals("pdf", FileKitAndroidDialogsInternal.normalizeFileSaverExtension(" .pdf "))
         assertEquals(
+            setOf("txt", "md"),
+            FileKitAndroidDialogsInternal.normalizeFileSaverExtensions(setOf(" .txt ", ".md")),
+        )
+        assertEquals(
             expected = "report.pdf",
             actual = FileKitAndroidDialogsInternal.buildFileSaverSuggestedName(
                 suggestedName = "report",

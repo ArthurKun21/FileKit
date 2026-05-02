@@ -130,15 +130,17 @@ public actual suspend fun FileKit.openDirectoryPicker(
  * Opens a file saver dialog.
  *
  * @param suggestedName The suggested name for the file.
- * @param extension The file extension (optional).
+ * @param defaultExtension The default file extension without the dot.
+ * @param allowedExtensions Allowed file extensions for the native save dialog. Ignored on iOS.
  * @param directory The initial directory. Supported on desktop platforms.
  * @param dialogSettings Platform-specific settings for the dialog.
  * @return The path where the file should be saved as a [PlatformFile], or null if canceled.
  */
 @OptIn(ExperimentalForeignApi::class)
-public actual suspend fun FileKit.openFileSaver(
+internal actual suspend fun FileKit.platformOpenFileSaver(
     suggestedName: String,
-    extension: String?,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? = withContext(Dispatchers.Main) {
@@ -166,9 +168,10 @@ public actual suspend fun FileKit.openFileSaver(
         // the suggestedName cannot include "/" because the OS interprets it as a directory separator.
         // However, "Files" renders ":" as "/", so we can just use ":" and the user will see "/".
         val sanitizedSuggestedName = suggestedName.replace("/", ":")
+        val normalizedDefaultExtension = normalizeFileSaverExtension(defaultExtension)
         val fileName = buildFileSaverSuggestedName(
             suggestedName = sanitizedSuggestedName,
-            extension = extension,
+            extension = normalizedDefaultExtension,
         )
 
         // Get the fileManager

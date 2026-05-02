@@ -22,22 +22,59 @@ public class PickerResultLauncher(
 public class SaverResultLauncher(
     private val onLaunch: (
         suggestedName: String,
-        extension: String?,
+        defaultExtension: String?,
+        allowedExtensions: Set<String>?,
         directory: PlatformFile?,
     ) -> Unit,
 ) {
     /**
      * Launches the file saver dialog.
      *
+     * [defaultExtension] controls the suggested/default extension for the
+     * generated file name. [allowedExtensions] controls native save dialog
+     * filters where the platform supports them; apps that require a specific
+     * output format should still validate the returned file extension.
+     *
      * @param suggestedName The suggested name for the file.
-     * @param extension The file extension (optional).
+     * @param defaultExtension The default file extension without the dot.
+     * @param allowedExtensions Allowed file extensions for the native save dialog.
      * @param directory The initial directory (optional, supported on desktop).
      */
+    public fun launch(
+        suggestedName: String,
+        defaultExtension: String? = null,
+        allowedExtensions: Set<String>? = null,
+        directory: PlatformFile? = null,
+    ) {
+        onLaunch(suggestedName, defaultExtension, allowedExtensions, directory)
+    }
+
+    /**
+     * Launches the file saver dialog.
+     *
+     * @param suggestedName The suggested name for the file.
+     * @param extension The default file extension without the dot.
+     * @param directory The initial directory (optional, supported on desktop).
+     */
+    @Deprecated(
+        message = "Use defaultExtension. The extension parameter is a default extension hint, not a filter.",
+        replaceWith = ReplaceWith(
+            "launch(" +
+                "suggestedName = suggestedName, " +
+                "defaultExtension = extension, " +
+                "directory = directory" +
+                ")",
+        ),
+    )
     public fun launch(
         suggestedName: String,
         extension: String? = null,
         directory: PlatformFile? = null,
     ) {
-        onLaunch(suggestedName, extension, directory)
+        launch(
+            suggestedName = suggestedName,
+            defaultExtension = extension,
+            directory = directory,
+        )
     }
 }

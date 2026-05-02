@@ -28,6 +28,20 @@ class FileSaverNameTest {
     }
 
     @Test
+    fun normalizeFileSaverExtensions_whenValuesContainDotsAndBlankEntries_returnsCleanSet() {
+        assertEquals(
+            setOf("pdf", "md"),
+            normalizeFileSaverExtensions(setOf(" .pdf ", ".", "", "md")),
+        )
+    }
+
+    @Test
+    fun normalizeFileSaverExtensions_whenNoUsableValues_returnsNull() {
+        assertNull(normalizeFileSaverExtensions(null))
+        assertNull(normalizeFileSaverExtensions(setOf("", ".", "   ")))
+    }
+
+    @Test
     fun buildFileSaverSuggestedName_whenExtensionNullOrBlank_returnsSuggestedName() {
         assertEquals("document", buildFileSaverSuggestedName("document", null))
         assertEquals("document", buildFileSaverSuggestedName("document", ""))

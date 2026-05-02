@@ -5,6 +5,11 @@ internal fun normalizeFileSaverExtension(extension: String?): String? = extensio
     ?.trimStart('.')
     ?.takeIf { it.isNotBlank() }
 
+internal fun normalizeFileSaverExtensions(extensions: Set<String>?): Set<String>? = extensions
+    ?.mapNotNull(::normalizeFileSaverExtension)
+    ?.toSet()
+    ?.takeIf { it.isNotEmpty() }
+
 internal fun buildFileSaverSuggestedName(
     suggestedName: String,
     extension: String?,

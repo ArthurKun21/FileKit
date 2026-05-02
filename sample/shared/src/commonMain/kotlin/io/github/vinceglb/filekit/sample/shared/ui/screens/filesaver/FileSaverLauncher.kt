@@ -8,7 +8,8 @@ internal interface FileSaverLauncher {
 
     fun launch(
         suggestedName: String,
-        extension: String?,
+        defaultExtension: String?,
+        allowedExtensions: Set<String>?,
         directory: PlatformFile?,
     )
 }

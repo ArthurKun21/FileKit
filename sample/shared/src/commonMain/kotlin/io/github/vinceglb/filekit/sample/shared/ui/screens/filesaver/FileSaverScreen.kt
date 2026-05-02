@@ -64,6 +64,7 @@ private fun FileSaverScreen(
     var buttonState by remember { mutableStateOf(AppScreenHeaderButtonState.Enabled) }
     var suggestedName by remember { mutableStateOf("document") }
     var extension by remember { mutableStateOf("pdf") }
+    var allowedExtensions by remember { mutableStateOf("pdf, txt") }
     var saveDirectory by remember { mutableStateOf<PlatformFile?>(null) }
     var savedFiles by remember { mutableStateOf(emptyList<PlatformFile>()) }
 
@@ -89,10 +90,17 @@ private fun FileSaverScreen(
         }
         val resolvedName = suggestedName.trim().ifBlank { "document" }
         val resolvedExtension = extension.trim().removePrefix(".").ifBlank { null }
+        val resolvedAllowedExtensions = allowedExtensions
+            .split(",")
+            .mapNotNull { value ->
+                value.trim().removePrefix(".").ifBlank { null }
+            }.toSet()
+            .takeIf { it.isNotEmpty() }
         buttonState = AppScreenHeaderButtonState.Loading
         fileSaverLauncher.launch(
             suggestedName = resolvedName,
-            extension = resolvedExtension,
+            defaultExtension = resolvedExtension,
+            allowedExtensions = resolvedAllowedExtensions,
             directory = saveDirectory,
         )
     }
@@ -128,14 +136,16 @@ private fun FileSaverScreen(
             item {
                 FileSaverSettingsCard(
                     suggestedName = suggestedName,
-                    extension = extension,
+                    defaultExtension = extension,
+                    allowedExtensions = allowedExtensions,
                     saveDirectoryName = saveDirectory?.name,
                     isSupported = isSupported,
                     onSuggestedNameChange = { suggestedName = it },
-                    onExtensionChange = { newValue ->
+                    onDefaultExtensionChange = { newValue ->
                         val trimmed = newValue.trim()
                         extension = if (trimmed.startsWith(".")) trimmed.drop(1) else trimmed
                     },
+                    onAllowedExtensionsChange = { allowedExtensions = it },
                     onPickSaveDirectory = directoryPickerLauncher::launch,
                     onClearSaveDirectory = { saveDirectory = null },
                     modifier = Modifier.sizeIn(maxWidth = AppMaxWidth),
@@ -168,11 +178,13 @@ private fun FileSaverScreen(
 @Composable
 private fun FileSaverSettingsCard(
     suggestedName: String,
-    extension: String,
+    defaultExtension: String,
+    allowedExtensions: String,
     saveDirectoryName: String?,
     isSupported: Boolean,
     onSuggestedNameChange: (String) -> Unit,
-    onExtensionChange: (String) -> Unit,
+    onDefaultExtensionChange: (String) -> Unit,
+    onAllowedExtensionsChange: (String) -> Unit,
     onPickSaveDirectory: () -> Unit,
     onClearSaveDirectory: () -> Unit,
     modifier: Modifier = Modifier,
@@ -203,12 +215,12 @@ private fun FileSaverSettingsCard(
                 }
 
                 AppField(
-                    label = "Extension",
+                    label = "Default Extension",
                     modifier = Modifier.weight(1f),
                 ) {
                     AppOutlinedTextField(
-                        value = extension,
-                        onValueChange = onExtensionChange,
+                        value = defaultExtension,
+                        onValueChange = onDefaultExtensionChange,
                         placeholder = {
                             Text(
                                 text = "pdf",
@@ -219,6 +231,21 @@ private fun FileSaverSettingsCard(
                         fontFamily = monoFontFamily,
                     )
                 }
+            }
+
+            AppField(label = "Allowed Extensions") {
+                AppOutlinedTextField(
+                    value = allowedExtensions,
+                    onValueChange = onAllowedExtensionsChange,
+                    placeholder = {
+                        Text(
+                            text = "pdf, txt",
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    fontFamily = monoFontFamily,
+                )
             }
 
             AppPickerSelectionButton(

@@ -77,7 +77,7 @@ internal actual fun FileDetailsActions(
                     scope.launch {
                         val selectedFile = FileKit.openFileSaver(
                             suggestedName = "${file.nameWithoutExtension}/(copy)",
-                            extension = file.extension,
+                            defaultExtension = file.extension,
                             directory = file.parent(),
                         )
 

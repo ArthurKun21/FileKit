@@ -64,17 +64,19 @@ internal class LinuxFilePicker(
 
     override suspend fun openFileSaver(
         suggestedName: String,
-        extension: String?,
+        defaultExtension: String?,
+        allowedExtensions: Set<String>?,
         directory: PlatformFile?,
         dialogSettings: FileKitDialogSettings,
     ): File? = if (xdgFilePickerPortalAvailable) {
         xdgFilePickerPortal.openFileSaver(
             suggestedName,
-            extension,
+            defaultExtension,
+            allowedExtensions,
             directory,
             dialogSettings,
         )
     } else {
-        awtFilePicker.openFileSaver(suggestedName, extension, directory, dialogSettings)
+        awtFilePicker.openFileSaver(suggestedName, defaultExtension, allowedExtensions, directory, dialogSettings)
     }
 }

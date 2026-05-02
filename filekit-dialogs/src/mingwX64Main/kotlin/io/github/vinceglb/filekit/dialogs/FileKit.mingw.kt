@@ -90,14 +90,16 @@ public actual suspend fun FileKit.openDirectoryPicker(
     showOpenDialog(null, directory, dialogSettings.title, pickFolders = true, allowMultiple = false)
         ?.firstOrNull()
 
-public actual suspend fun FileKit.openFileSaver(
+internal actual suspend fun FileKit.platformOpenFileSaver(
     suggestedName: String,
-    extension: String?,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
     directory: PlatformFile?,
     dialogSettings: FileKitDialogSettings,
 ): PlatformFile? {
-    val ext = normalizeFileSaverExtension(extension)
-    return showSaveDialog(buildFileSaverSuggestedName(suggestedName, ext), ext, directory, dialogSettings.title)
+    val ext = normalizeFileSaverExtension(defaultExtension)
+    val filters = normalizeFileSaverExtensions(allowedExtensions)
+    return showSaveDialog(buildFileSaverSuggestedName(suggestedName, ext), ext, filters, directory, dialogSettings.title)
 }
 
 public actual fun FileKit.openFileWithDefaultApplication(
@@ -171,7 +173,8 @@ private fun showOpenDialog(
 
 private fun showSaveDialog(
     suggestedName: String,
-    extension: String?,
+    defaultExtension: String?,
+    allowedExtensions: Set<String>?,
     directory: PlatformFile?,
     title: String?,
 ): PlatformFile? = memScoped {
@@ -206,15 +209,16 @@ private fun showSaveDialog(
         if (setFilenameHr != S_OK) {
             throw IllegalStateException("IFileDialog::SetFileName failed with HRESULT 0x${setFilenameHr.toUInt().toString(16)}")
         }
-        extension?.let {
+        defaultExtension?.let {
             val setDefaultExtensionHr = fk_dialog_set_default_extension(dlg.reinterpret(), it)
             if (setDefaultExtensionHr != S_OK) {
                 throw IllegalStateException(
                     "IFileDialog::SetDefaultExtension failed with HRESULT 0x${setDefaultExtensionHr.toUInt().toString(16)}",
                 )
             }
-            setFileTypes(dlg, setOf(it))
         }
+        val filterExtensions = allowedExtensions ?: defaultExtension?.let { setOf(it) }
+        filterExtensions?.let { setFileTypes(dlg, it) }
         directory?.let { setFolder(dlg, it) }
 
         val hr = fk_dialog_show(dlg.reinterpret(), null)

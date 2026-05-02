@@ -3,6 +3,7 @@ package io.github.vinceglb.filekit.dialogs.platform.mac
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.FileKitMacOSSettings
+import io.github.vinceglb.filekit.dialogs.buildFileSaverSuggestedName
 import io.github.vinceglb.filekit.dialogs.platform.PlatformFilePicker
 import io.github.vinceglb.filekit.dialogs.platform.mac.foundation.Foundation
 import io.github.vinceglb.filekit.dialogs.platform.mac.foundation.ID
@@ -47,6 +48,63 @@ internal class MacOSFilePicker : PlatformFilePicker {
         macOSSettings = dialogSettings.macOS,
     )
 
+    override suspend fun openFileSaver(
+        suggestedName: String,
+        defaultExtension: String?,
+        allowedExtensions: Set<String>?,
+        directory: PlatformFile?,
+        dialogSettings: FileKitDialogSettings,
+    ): File? = withContext(Dispatchers.IO) {
+        val pool = Foundation.NSAutoreleasePool()
+        try {
+            var response: File? = null
+
+            Foundation.executeOnMainThread(
+                withAutoreleasePool = false,
+                waitUntilDone = true,
+            ) {
+                val savePanel = Foundation.invoke("NSSavePanel", "new")
+
+                dialogSettings.title?.let {
+                    Foundation.invoke(savePanel, "setMessage:", Foundation.nsString(it))
+                }
+
+                directory?.let {
+                    Foundation.invoke(savePanel, "setDirectoryURL:", Foundation.nsURL(it.path))
+                }
+
+                Foundation.invoke(
+                    savePanel,
+                    "setNameFieldStringValue:",
+                    Foundation.nsString(
+                        buildFileSaverSuggestedName(
+                            suggestedName = suggestedName,
+                            extension = defaultExtension,
+                        ),
+                    ),
+                )
+
+                val fileTypes = allowedExtensions ?: defaultExtension?.let { setOf(it) }
+                savePanel.setAllowedFileTypes(fileTypes)
+
+                Foundation.invoke(
+                    savePanel,
+                    "setCanCreateDirectories:",
+                    dialogSettings.macOS.canCreateDirectories,
+                )
+
+                val result = Foundation.invoke(savePanel, "runModal")
+                if (result.toInt() == NS_MODAL_RESPONSE_OK) {
+                    response = singlePath(savePanel)
+                }
+            }
+
+            response
+        } finally {
+            pool.drain()
+        }
+    }
+
     private suspend fun <T> callNativeMacOSPicker(
         mode: MacOSFilePickerMode<T>,
         directory: PlatformFile?,
@@ -79,15 +137,7 @@ internal class MacOSFilePicker : PlatformFilePicker {
                 }
 
                 // Set file extensions
-                fileExtensions?.let { extensions ->
-                    val items = extensions.map { Foundation.nsString(it) }
-                    val nsData = Foundation.invokeVarArg(
-                        "NSArray",
-                        "arrayWithObjects:",
-                        *items.toTypedArray(),
-                    )
-                    Foundation.invoke(openPanel, "setAllowedFileTypes:", nsData)
-                }
+                openPanel.setAllowedFileTypes(fileExtensions)
 
                 // Set resolvesAliases
                 macOSSettings.resolvesAliases?.let { resolvesAliases ->
@@ -110,9 +160,37 @@ internal class MacOSFilePicker : PlatformFilePicker {
     }
 
     private companion object {
+        const val NS_MODAL_RESPONSE_OK = 1
+
+        fun Collection<String>.toNsStringArray(): ID? {
+            if (isEmpty()) {
+                return null
+            }
+
+            val items = map { Foundation.nsString(it) }
+            return Foundation.invokeVarArg(
+                "NSArray",
+                "arrayWithObjects:",
+                *items.toTypedArray(),
+            )
+        }
+
+        fun ID.setAllowedFileTypes(extensions: Collection<String>?) {
+            val fileTypes = extensions?.toNsStringArray() ?: return
+            Foundation.invoke(this, "setAllowedFileTypes:", fileTypes)
+        }
+
         fun singlePath(openPanel: ID): File? {
             val url = Foundation.invoke(openPanel, "URL")
+            if (Foundation.isNil(url)) {
+                return null
+            }
+
             val nsPath = Foundation.invoke(url, "path")
+            if (Foundation.isNil(nsPath)) {
+                return null
+            }
+
             val path = Foundation.toStringViaUTF8(nsPath)
             return path?.let { File(it) }
         }
